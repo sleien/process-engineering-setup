@@ -1,0 +1,50 @@
+{
+  "source": "Dynamic_Decanting_COD_Bypass_Flow_Min_Threshold_Fixed.sumo (Sumo 4.3, Sumo2 model)",
+  "note": "Ground-truth effluent from the last stored Sumo run (laststate.xml steady-state snapshot). Use these as the acceptance targets for the peepypoo example.",
+  "effluent_target": {
+    "Q_m3_d": 5378.92,
+    "TCOD_mgL": 41.03,
+    "TKN_mgN_L": 3.684,
+    "TP_mgP_L": 3.828,
+    "TN_mgN_L": 6.639,
+    "TSS_mgL": 22.24,
+    "VSS_mgL": 18.71,
+    "S_O_mgL": 2.0,
+    "T_C": 19.56
+  },
+  "inputs": {
+    "municipal": {
+      "Q_m3_d_design": 6927.63,
+      "TCOD_mgL": 538.72,
+      "TKN_mgN_L": 42.25,
+      "TP_mgP_L": 6.998,
+      "T_C": 15.4,
+      "pattern": "diurnal (daily) — see Influent1_47_Municipal_diurnal_flow.tsv, ~5.9k–8.5k m³/d",
+      "fSNHx_TKN": 0.5543
+    },
+    "industrial": {
+      "Q_m3_d_design": 3696.0,
+      "TCOD_mgL": 1392.0,
+      "TKN_mgN_L": 27.7,
+      "TP_mgP_L": 11.3,
+      "T_C": 24.7,
+      "pattern": "weekly pulse — see Influent2_97_Industrial_Inflow.tsv, ~7 d idle then ~6 h at 5–7 k m³/d",
+      "fSCOD_TCOD": 0.0,
+      "fSPO4_TP": 0.5814
+    }
+  },
+  "process_unit_targets": {
+    "SRT_target_d": 15,
+    "sbr_cycle_h": { "fill": 1.5, "react": 3.5, "settle": 0.75, "decant": 1.65 },
+    "sbr_stagger_h": { "A1": 1.5, "A2": 3.0, "B1": 4.5, "B2": 3.0 },
+    "trickling_filter_area_m2": 500,
+    "trickling_filter_height_m": 7.0,
+    "polishing_cstr_volume_m3": 250,
+    "polishing_S_O_setpoint_mgL": 2.0,
+    "bypass_pid": { "CV_setpoint_COD_over_N": 3.0, "MV_low_m3_d": 5600, "direction_high_COD": "bypass around trickling filters" }
+  },
+  "acceptance": {
+    "rule": "peepypoo run of the example is a match when final-week mean effluent is within 2x of each target, or the residual gap is documented in the example note.",
+    "parameters": ["TCOD_mgL", "TKN_mgN_L", "TP_mgP_L"]
+  }
+}

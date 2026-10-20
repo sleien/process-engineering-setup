@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "server": "node serve.mjs",
+    "api": "server/.venv/bin/uvicorn server.app:app --port 8080"
   },
   "dependencies": {
     "@xyflow/react": "^12.10.2",

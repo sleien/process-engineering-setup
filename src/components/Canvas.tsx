@@ -74,8 +74,9 @@ export default function Canvas(props: CanvasProps) {
         connectionMode={ConnectionMode.Loose}
         defaultEdgeOptions={defaultEdgeOptions}
         deleteKeyCode={null}
-        snapToGrid
-        snapGrid={[8, 8]}
+        // Grid snapping is done anchor-aware in App (see snapNodePosition) instead of React
+        // Flow's built-in top-left snapToGrid, so port anchors — not bounding boxes — land on
+        // the grid and pipes between different unit types can be perfectly straight.
         fitView
         fitViewOptions={{ padding: 0.3 }}
         minZoom={0.1}

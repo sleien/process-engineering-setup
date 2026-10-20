@@ -14,6 +14,13 @@ npm run dev      # start the dev server → http://localhost:5173
 Other scripts: `npm run build` (production build to `dist/`), `npm run preview` (serve the
 build), `npm run typecheck` (TypeScript check, no emit).
 
+With the simulation backend set up (see [Simulation](#simulation-peepypoo--asm1)) you can also
+run one server that serves both the UI and the simulator on a single port:
+
+```bash
+npm run server   # builds dist/ then serves UI + /api/simulate on http://localhost:8080
+```
+
 ## How to use
 
 - **Add a unit** — drag any item from the left **Units** palette onto the canvas.
@@ -61,6 +68,17 @@ build), `npm run typecheck` (TypeScript check, no emit).
   the defaults.
 - **Auto flow labels** — tick *Label flow on canvas* for a pipe to print its flow (e.g.
   `Q = 2000 m³/d`) at the pipe's midpoint.
+
+- **Simulate** — once the simulation backend is running, draw a reactor train left→right
+  (e.g. anoxic reactor → aerated reactor), set volumes (and `kLa` on aerated units) in the
+  properties panel, give an *Influent* pipe a flow, then click **▶ Simulate**. A panel opens
+  with the simulated concentration per reactor and the final effluent, switchable per
+   compound (COD, O₂, N, biomass, …). See [Simulation](#simulation-peepypoo--asm1).
+ - **Control aeration** — select an aerated unit and tick **Controller** in the
+   Properties panel to add rules of the shape *if S_O > 2 then kLa = 100* (state or
+   time → comparison, then a kLa). Re-evaluated on a schedule (period, in days),
+   first matching rule wins, and the unit's normal kLa is the fallback when nothing
+   matches. See [Controllers](#controllers-doing-if-concentration-is-x-aerate-y).
 - **Flow-based pipe thickness** — with **Scale by flow** on (toolbar), a pipe's line width *and*
   arrowhead scale with its flow (∝ √flow, relative to the largest flow in the diagram); pipes with
   no flow keep a default width. Turn it off for uniform, fixed-size pipes and arrowheads.
@@ -114,9 +132,150 @@ bounding-box middle: `ports: { side }` sets where the left/right ports sit verti
 box (default `0.5`). For example the anoxic reactor uses `ports: { side: 0.687 }` so its inlet/
 outlet sit at the tank centre. Both the on-screen handles and the exported geometry honour it.
 
+## Simulation (PeePyPoo + ASM1)
+
+The canvas can drive a real mechanistic simulation. A Python backend
+([`server/`](server/)) translates your diagram into a model with
+[PeePyPoo](https://datinfo.gitlab.io/PeePyPoo/) (which solves ODEs in Julia via Thetis) and
+returns the concentration time series. Each reactor is modelled as **ASM1**; aerated units get
+an added aeration process driven by their `kLa`.
+
+It is a **single server**: the same FastAPI app that exposes `/api/simulate` also serves the
+built React app, so one port gives you UI + simulation.
+
+### Setup (one time)
+
+You need **Python 3.11+**. Create the venv and install the dependencies — on the first import
+`peepypoo` downloads and compiles the Julia engine (several minutes, one-off):
+
+```bash
+python3.11 -m venv server/.venv          # or any 3.11+ interpreter
+server/.venv/bin/pip install -r server/requirements.txt
+```
+
+### Run
+
+Option A — **one server, one port** (recommended):
+
+```bash
+npm run server      # builds dist/, then serves http://localhost:8080 (UI + API)
+```
+
+Option B — Vite dev server + API:
+
+```bash
+server/.venv/bin/uvicorn server.app:app --port 8080   # backend (term 1)
+npm run dev                                            # UI on :5173, proxies /api → :8080 (term 2)
+```
+
+### Using it
+
+1. Draw a forward train of reactors left→right (e.g. `Anoxic reactor → Aerated reactor`). The
+   simulator takes the **longest straight path** through your reactors and ignores branches.
+   **You can wire anything in front of the first reactor** — junctions, screens, equalisation
+   basins, clarifiers — e.g. `Influent → Clarifier → Anoxic → Aerated`. The simulator walks
+   the influent across those pass-through units to the first reactor it reaches. (Pass-through
+   units are not themselves modelled as reactors yet.)
+2. In the right-hand **Properties** panel, set each reactor's **Volume** (m³), and **kLa** (1/d)
+   for aerated units.
+3. Add an **Influent** pipe into the first reactor and set its **flow** (m³/d) — *or* set the
+   flow / composition later, inside the Simulation window (see step 5).
+4. Click **▶ Simulate**.
+5. A **Simulation** window opens with:
+   - a **status banner** (Running… / Ready / Failed),
+   - a **Setup** panel that tells you where the plant feed enters and where the effluent
+     leaves, with an **Influent flow** edit and an expandable **Influent composition** editor,
+   - time-series **charts** (reactor by reactor + effluent) for any compound (COD, O₂, N,
+     biomass, …),
+   - a **Final effluent** table,
+   - **Apply & re-run** (or **Re-run**) to re-fire without re-drawing.
+
+The first run takes a while (Julia warm-start); afterwards each run is typically 3–120 s
+depending on the model and time horizon.
+
+### Scope & limitations (v1)
+
+- **Recirculation** — when the train ends on a **Clarifier** unit, the simulator now models an
+  activated-sludge loop: a *perfect* (ideal, `f_ns = 0`) clarifier sends no solids to the
+  effluent, splits the settleable sludge by a `FlowSeparator` into **RAS** (return, fixed at the
+  clarifier's `Qr` field, pumped back to the first reactor) and **WAS** (waste, initial `Q_was`).
+  A periodic callback drives the WAS flow toward `WAS₀ · (MLSS_target / MLSS)` so the plant holds
+  its mixed-liquor solids near the clarifier's `MLSS` target — that's the SRT lever and what
+  prevents the reactor from washing its biomass out. **RAS/WAS are wired only when a Clarifier
+  unit is present**; bare recycle loops with no clarifier are still not modelled (they warn).
+  - The steady MLSS is "close to target", not exact: with a *fixed* RAS the retention (and hence
+    the reachable operating range) is fixed, and the WAS actuator steers within it. It also does
+    not yet do a proper clarifier settling/underflow model — `f_ns` is read but the ideal
+    clarifier is perfect by design.
+- Influent composition is the standard BSM1 stabilisation feed; you can't (yet) edit individual
+  influent concentrations.
+- The simulation is single-user: a solve blocks the server's single worker thread for its
+  duration (this is what keeps the non-thread-safe Julia engine happy).
+
+> ### Known bug (peepypoo / ModelingToolkit side)
+>
+> **Do not build the `Influent` with a per-state `TimeVaryingFunction` (the block-API).**
+>
+> `server/simulate.py` must feed the influent as a **dict of plain constants** plus a single
+> (scalar or time-varying) `flowrate`. If you instead pass `TimeVaryingFunction` blocks
+> per-state in the `sources` dict, the model compiles *in isolation* but, once wired into a
+> multi-reactor recirculation loop, it is left **one equation under-determined**:
+> `structural_simplify()` then aborts with
+> `ExtraVariablesSystemException: The system is unbalanced … potential extra variable:
+> r1₊reactor₊states₊S_…`. This is a peepypoo / `ModelingToolkit` state-selection limitation, not a
+> mistake in how the plant is wired (a minimal standalone model with the block-API form and the
+> same loop reproduces it).
+>
+> The dict-of-constants form closes cleanly (it's what `server/_probe.py` and the peepypoo
+> examples use) and is what this project relies on. A related trap in our own code:
+> `_as_ppp_source` used to have its `return TimeVaryingFunction(…)` inside the `except:` block, so
+> it silently returned `None` for a time-varying flow — that is *also* one missing equation and a
+> very hard 500 to debug; if `Influent` gets `flowrate=None` the flow equation disappears and you
+> see exactly the "unbalanced / extra variable" error above.
+
+### Files
+
+- `server/simulate.py` — diagram → PeePyPoo model + solve (the adapter).
+- `server/app.py` — FastAPI app: `/api/simulate`, `/api/health`, static `dist/`.
+- `server/requirements.txt` — Python deps.
+- `src/lib/sim.ts` — frontend API client.
+- `src/components/SimulationResults.tsx` + `LineChart.tsx` — results UI.
+- `serve.mjs` — the `npm run server` one-command launcher.
+
+### Controllers (doing "if concentration is X, aerate Y")
+
+Select any **aerated** unit (aerated CSTR, MBR, MBBR or MABR) and tick **Controller** in the
+Properties panel. Each rule is one line:
+
+```
+if  S_O  >  2.0   then set kLa = 100
+if  S_O  <  0.5   then set kLa = 500     (first match wins)
+if  time   <  1.0 then set kLa = 150     (time-based: t in days)
+```
+
+* **When** is any ASM1 state (`S_O`, `S_NH`, `S_NO`, …) or **time t** (days).
+* **Op** is one of `<`, `<=`, `>`, `>=`.
+* **Then** is a kLa (1/d).
+* **Period** in days is how often the controller re-evaluates (default 0.25 d). The first
+  matching rule wins; if none matches, the unit's own `kLa` field (a number, staged list or
+  diurnal sine) is used.
+* Time-based rules let you schedule aeration (e.g. night-time kLa, SBR-style phases,
+  a startup ramp) without hand-drawing a time series.
+
+Mechanically this is a **discrete periodic callback** on the solver (PeePyPoo's
+`PeriodicCallback` driven by `GetIndex`/`SetIndex`), fired against the structurally-simplified
+system the solver actually runs. It reads states live inside the solve and rewrites the
+aeration `kLa` parameter. That's the only place in the stack where "if X then Y" can live,
+because PeePyPoo's ODE body is built symbolically — control flow doesn't survive symbolic
+build time.
+
+Files: `server/controllers.py` (model + validator + callback builder),
+`src/lib/controller.ts` (shared types + parse/serialize), `src/components/ControllerEditor.tsx`.
+
 ## Notes
 
 - Built on [React Flow](https://reactflow.dev) (`@xyflow/react`).
 - Units render on-screen as `<img>` (isolates each SVG's internal ids); the SVG exporter inlines
   them with per-instance id prefixes so gradient fills never collide between copies.
-- This is a pure drawing tool — connections are not type-checked against process rules.
+- Drawing tools (connections) are not type-checked against process rules; the **simulation** is a
+  separate, explicit step over the reactor train (see [Simulation](#simulation-peepypoo--asm1)).

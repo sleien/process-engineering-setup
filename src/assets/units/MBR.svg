@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- MBR (membrane bioreactor): aerated basin + vertical membrane module + permeate
+   suction line. Same 96-dpi canvas as the rest of the unit library. -->
+<svg
+   width="67mm"
+   height="41mm"
+   viewBox="0 0 253 155"
+   version="1.1"
+   xmlns="http://www.w3.org/2000/svg">
+  <!-- Vessel -->
+  <rect x="5" y="22" width="158" height="120" rx="6"
+        fill="none" stroke="#000000" stroke-width="1.8"/>
+  <!-- Liquid level (dashed) -->
+  <path d="M 10 44 H 158" stroke="#000000" stroke-width="0.9"
+        stroke-dasharray="5 3" fill="none"/>
+  <!-- Membrane module (right end of the basin): hatched panel -->
+  <rect x="114" y="48" width="40" height="88"
+        fill="none" stroke="#000000" stroke-width="1.8"/>
+  <g stroke="#000000" stroke-width="1.0">
+    <line x1="118" y1="54"  x2="150" y2="68"/>
+    <line x1="118" y1="68"  x2="150" y2="82"/>
+    <line x1="118" y1="82"  x2="150" y2="96"/>
+    <line x1="118" y1="96"  x2="150" y2="110"/>
+    <line x1="118" y1="110" x2="150" y2="124"/>
+    <line x1="118" y1="124" x2="150" y2="132"/>
+  </g>
+  <!-- Permeate (suction) pipe leaving through the right wall -->
+  <path d="M 154 100 H 236" stroke="#000000" stroke-width="1.8" fill="none"/>
+  <path d="M 228 94 L 238 100 L 228 106" fill="#ffffff" stroke="#000000"
+        stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Aeration diffusers along the bottom -->
+  <g fill="none" stroke="#000000" stroke-width="1.4">
+    <path d="M 26 138 a 6 6 0 0 0 12 0"/>
+    <path d="M 46 138 a 6 6 0 0 0 12 0"/>
+    <path d="M 66 138 a 6 6 0 0 0 12 0"/>
+    <path d="M 90 138 a 6 6 0 0 0 12 0"/>
+  </g>
+</svg>

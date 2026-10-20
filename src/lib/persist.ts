@@ -1,4 +1,5 @@
 import type { AppNode, AppEdge, ProjectFile } from './types'
+import { GRID, snapNodePosition } from './geometry'
 import { getStreamColors, sanitizeColors, DEFAULT_STREAM_COLORS, type StreamColors } from './streams'
 
 const KEY = 'wwtp-designer:autosave'
@@ -13,11 +14,39 @@ export function makeProject(
   return { version: 1, nodes, edges, viewport, settings }
 }
 
+/**
+ * Snap every unit/junction port anchor (and Hand-mode waypoint) onto the grid. Diagrams saved
+ * before anchor-aware snapping existed hold fractional positions that can never line up with
+ * newly dragged nodes — normalising on load moves each node by at most half a grid step and
+ * makes old and new elements share the same grid lines. Text labels are left untouched (their
+ * size isn't measured yet at load, and they don't carry pipes).
+ */
+function normalize(nodes: AppNode[], edges: AppEdge[]): { nodes: AppNode[]; edges: AppEdge[] } {
+  return {
+    nodes: nodes.map((n) => (n.type === 'text' ? n : { ...n, position: snapNodePosition(n, n.position) })),
+    edges: edges.map((e) =>
+      e.data?.waypoint
+        ? {
+            ...e,
+            data: {
+              ...e.data,
+              waypoint: {
+                x: Math.round(e.data.waypoint.x / GRID) * GRID,
+                y: Math.round(e.data.waypoint.y / GRID) * GRID,
+              },
+            },
+          }
+        : e,
+    ),
+  }
+}
+
 export function parseProject(text: string): ProjectFile | null {
   try {
     const p = JSON.parse(text)
     if (p && p.version === 1 && Array.isArray(p.nodes) && Array.isArray(p.edges)) {
-      return { version: 1, nodes: p.nodes, edges: p.edges, viewport: p.viewport, settings: p.settings }
+      const { nodes, edges } = normalize(p.nodes, p.edges)
+      return { version: 1, nodes, edges, viewport: p.viewport, settings: p.settings }
     }
   } catch {
     /* ignore */

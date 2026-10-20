@@ -1,0 +1,4 @@
+# Python >= 3.11 required (peepypoo needs 3.11+; the Julia engine installs itself).
+peepypoo==1.0.4
+fastapi==0.143.2
+uvicorn[standard]==0.54.0

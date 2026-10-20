@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react'
 import type { AppEdge, AppNode } from '../lib/types'
-import { getUnitAttrs } from '../lib/attributes'
+import { attrPlaceholder, getUnitAttrs } from '../lib/attributes'
 import { getUnit } from '../units/manifest'
 import { STREAMS, streamColor } from '../lib/streams'
+import ControllerEditor from './ControllerEditor'
+import { isAeratedUnit } from '../lib/controller'
+import { ENGINE_DEFAULT_INFLUENT } from '../lib/states'
 
 type Props = {
   node?: AppNode
@@ -27,6 +30,12 @@ export default function Inspector({ node, edge, onPatchNode, onPatchEdge }: Prop
     body = (
       <>
         <div className="insp-title">{unit?.label ?? 'Unit'}</div>
+        <div className="insp-hint insp-hint-time">
+        Any numeric field accepts three forms:<br/>
+        <code>2000</code> constant &nbsp;·&nbsp;
+        <code>[1500, 800, 2500]</code> linear profile across the run &nbsp;·&nbsp;
+        <code>1500 + 500*sin(2*pi*t/24)</code> diurnal pattern
+        </div>
         <label className="insp-field">
           <span>Name</span>
           <input
@@ -35,21 +44,31 @@ export default function Inspector({ node, edge, onPatchNode, onPatchEdge }: Prop
             onChange={(e) => onPatchNode(node.id, { name: e.target.value })}
           />
         </label>
-        {attrs.map((a) => (
-          <label className="insp-field" key={a.key}>
-            <span>
-              {a.label}
-              {a.unit ? ` [${a.unit}]` : ''}
-            </span>
-            <input
-              inputMode="decimal"
-              value={values[a.key] ?? ''}
-              onChange={(e) =>
-                onPatchNode(node.id, { attributes: { ...values, [a.key]: e.target.value } })
-              }
-            />
-          </label>
-        ))}
+        {attrs.map((a) => {
+          const dflt =
+            node.data.unitId === 'influent' && a.key in ENGINE_DEFAULT_INFLUENT
+              ? `${ENGINE_DEFAULT_INFLUENT[a.key]}${a.unit ? ` ${a.unit}` : ''}`
+              : attrPlaceholder(a, node.data.unitId)
+          return (
+            <label className="insp-field" key={a.key}>
+              <span>
+                {a.label}
+                {a.unit ? ` [${a.unit}]` : ''}
+              </span>
+              <input
+                inputMode="decimal"
+                value={values[a.key] ?? ''}
+                placeholder={dflt}
+                onChange={(e) =>
+                  onPatchNode(node.id, { attributes: { ...values, [a.key]: e.target.value } })
+                }
+              />
+            </label>
+          )
+        })}
+        {isAeratedUnit(node.data.unitId) && (
+          <ControllerEditor node={node} onPatchNode={onPatchNode} />
+        )}
         <label className="insp-check">
           <input
             type="checkbox"

@@ -6,6 +6,9 @@ import { pipePoints } from './pipePath'
 /** On-canvas diameter of a junction dot (px). */
 export const JUNCTION_SIZE = 9
 
+/** Grid pitch (flow px) that node *port anchors* snap to. */
+export const GRID = 8
+
 export type XY = { x: number; y: number }
 
 /** Outer size of a node in flow coordinates. */
@@ -46,6 +49,22 @@ export function handlePoint(n: AppNode, handleId?: string | null): XY {
 export function alignOffset(n: AppNode, axis: 'h' | 'v'): number {
   const p = handlePoint(n, axis === 'h' ? 'left' : 'top')
   return axis === 'h' ? p.y - n.position.y : p.x - n.position.x
+}
+
+/**
+ * Snap a node's prospective position so its *port anchors* land on the grid — not its top-left
+ * corner. Unit artwork puts the side ports at fractional heights (e.g. the CSTR tank centre is
+ * 50.568px down), so corner-snapping can never line ports of two different unit types up on the
+ * same grid line; anchor-snapping guarantees every side port sits on a grid y and every top/bottom
+ * port on a grid x, making pixel-perfect straight pipes reachable by plain dragging.
+ */
+export function snapNodePosition(n: AppNode, pos: XY): XY {
+  const ox = alignOffset(n, 'v')
+  const oy = alignOffset(n, 'h')
+  return {
+    x: Math.round((pos.x + ox) / GRID) * GRID - ox,
+    y: Math.round((pos.y + oy) / GRID) * GRID - oy,
+  }
 }
 
 export function handlePosition(handleId?: string | null): Position | null {

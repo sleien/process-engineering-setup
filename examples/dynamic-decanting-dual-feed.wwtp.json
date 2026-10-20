@@ -1,0 +1,333 @@
+{
+  "version": 1,
+  "nodes": [
+    {
+      "id": "influent-munc",
+      "type": "unit",
+      "position": { "x": 0, "y": 20 },
+      "data": {
+        "unitId": "influent",
+        "width": 75,
+        "height": 75,
+        "name": "Municipal influent",
+        "attributes": {
+          "Q": "6928",
+          "S_S": "250",
+          "S_NH": "23.4",
+          "S_NO": "0",
+          "S_ND": "11.6",
+          "X_S": "200",
+          "S_ALK": "4800"
+        },
+        "showAttrs": true
+      }
+    },
+    {
+      "id": "influent-ind",
+      "type": "unit",
+      "position": { "x": 0, "y": 300 },
+      "data": {
+        "unitId": "influent",
+        "width": 75,
+        "height": 75,
+        "name": "Industrial influent",
+        "attributes": {
+          "Q": "3696",
+          "S_S": "1392",
+          "S_NH": "4.6",
+          "S_NO": "0",
+          "S_ND": "8",
+          "X_S": "350",
+          "S_ALK": "2200"
+        },
+        "showAttrs": true
+      }
+    },
+    {
+      "id": "screen-munc",
+      "type": "unit",
+      "position": { "x": 190, "y": 25 },
+      "data": {
+        "unitId": "screen",
+        "width": 53,
+        "height": 45,
+        "name": "Coarse screen (municipal)",
+        "attributes": { "spacing": "20" },
+        "showAttrs": true
+      }
+    },
+    {
+      "id": "screen-ind",
+      "type": "unit",
+      "position": { "x": 190, "y": 305 },
+      "data": {
+        "unitId": "screen",
+        "width": 53,
+        "height": 45,
+        "name": "Coarse screen (industrial)",
+        "attributes": { "spacing": "20" },
+        "showAttrs": true
+      }
+    },
+    {
+      "id": "bypass-basin",
+      "type": "unit",
+      "position": { "x": 400, "y": 295 },
+      "data": {
+        "unitId": "equalization_basin",
+        "width": 75,
+        "height": 74,
+        "name": "Bypass equalization basin",
+        "attributes": { "V": "1000", "HRT": "24" },
+        "showAttrs": true
+      }
+    },
+    {
+      "id": "trickling-1",
+      "type": "unit",
+      "position": { "x": 610, "y": 110 },
+      "data": {
+        "unitId": "trickling_filter",
+        "width": 84,
+        "height": 50,
+        "name": "Trickling filters 1 + 2",
+        "attributes": { "area": "500", "recirc": "2" },
+        "showAttrs": true
+      }
+    },
+    {
+      "id": "trickling-2",
+      "type": "unit",
+      "position": { "x": 610, "y": 250 },
+      "data": {
+        "unitId": "trickling_filter",
+        "width": 84,
+        "height": 50,
+        "name": "Trickling filters 3 + 4",
+        "attributes": { "area": "500", "recirc": "2" },
+        "showAttrs": true
+      }
+    },
+    {
+      "id": "sbr-a",
+      "type": "unit",
+      "position": { "x": 820, "y": 70 },
+      "data": {
+        "unitId": "sbr",
+        "width": 90,
+        "height": 57,
+        "name": "SBR train A (A1 + A2)",
+        "attributes": { "V": "4110", "MLSS": "4200", "DO": "2", "SRT": "15", "cycle": "9" },
+        "showAttrs": true
+      }
+    },
+    {
+      "id": "sbr-b",
+      "type": "unit",
+      "position": { "x": 820, "y": 240 },
+      "data": {
+        "unitId": "sbr",
+        "width": 90,
+        "height": 57,
+        "name": "SBR train B (B1 + B2)",
+        "attributes": { "V": "4110", "MLSS": "4200", "DO": "2", "SRT": "15", "cycle": "9" },
+        "showAttrs": true
+      }
+    },
+    {
+      "id": "aeration-1",
+      "type": "unit",
+      "position": { "x": 1030, "y": 130 },
+      "data": {
+        "unitId": "aerated_CSTR",
+        "width": 160,
+        "height": 98,
+        "name": "Polishing aeration unit",
+        "attributes": { "V": "250", "MLSS": "4000", "kLa": "300" },
+        "showAttrs": true,
+        "controller": {
+          "period_days": 0.25,
+          "rules": [
+            { "when": "S_O", "op": ">", "value": 2.0, "set": 120 },
+            { "when": "S_O", "op": "<=", "value": 2.0, "set": 300 }
+          ]
+        }
+      }
+    },
+    {
+      "id": "effluent-1",
+      "type": "unit",
+      "position": { "x": 1240, "y": 140 },
+      "data": {
+        "unitId": "effluent",
+        "width": 75,
+        "height": 67,
+        "name": "Treated effluent"
+      }
+    },
+    {
+      "id": "sludge-was",
+      "type": "unit",
+      "position": { "x": 1080, "y": 380 },
+      "data": {
+        "unitId": "sludge",
+        "width": 75,
+        "height": 67,
+        "name": "SBR waste sludge (WAS)"
+      }
+    },
+    {
+      "id": "sludge-sand",
+      "type": "unit",
+      "position": { "x": 420, "y": 440 },
+      "data": {
+        "unitId": "sludge",
+        "width": 75,
+        "height": 67,
+        "name": "Screen / grit screenings"
+      }
+    },
+    {
+      "id": "label-bypass",
+      "type": "text",
+      "position": { "x": 380, "y": 380 },
+      "data": {
+        "text": "PID (setpoint COD:N = 3.0) routes high-load industrial flow around the trickling filters into the bypass basin.",
+        "fontSize": 13
+      }
+    },
+    {
+      "id": "label-sbr",
+      "type": "text",
+      "position": { "x": 800, "y": 340 },
+      "data": {
+        "text": "SBR cycle ~9 h: fill 1.5 · react 3.5 (DO-controlled) · settle 0.75 · decant 1.65 h — trains A & B offset 3 h.",
+        "fontSize": 13
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e-munc-screen",
+      "type": "pipe",
+      "source": "influent-munc",
+      "sourceHandle": "right",
+      "target": "screen-munc",
+      "targetHandle": "left",
+      "data": { "routing": "step", "streamType": "influent", "flow": 6928, "showFlow": true }
+    },
+    {
+      "id": "e-ind-screen",
+      "type": "pipe",
+      "source": "influent-ind",
+      "sourceHandle": "right",
+      "target": "screen-ind",
+      "targetHandle": "left",
+      "data": { "routing": "step", "streamType": "influent", "flow": 3696, "showFlow": true }
+    },
+    {
+      "id": "e-screenm-tf",
+      "type": "pipe",
+      "source": "screen-munc",
+      "sourceHandle": "right",
+      "target": "trickling-1",
+      "targetHandle": "left",
+      "data": { "routing": "step", "streamType": "process", "flow": 6928, "showFlow": true, "name": "Municipal feed" }
+    },
+    {
+      "id": "e-screeni-basin",
+      "type": "pipe",
+      "source": "screen-ind",
+      "sourceHandle": "right",
+      "target": "bypass-basin",
+      "targetHandle": "left",
+      "data": { "routing": "step", "streamType": "process", "flow": 1600, "showFlow": true, "name": "COD bypass (on)" }
+    },
+    {
+      "id": "e-screeni-basin-tf",
+      "type": "pipe",
+      "label": "Bypass flow (blended)",
+      "source": "bypass-basin",
+      "sourceHandle": "right",
+      "target": "trickling-2",
+      "targetHandle": "left",
+      "data": { "routing": "step", "streamType": "recycle", "flow": 1600, "showFlow": true, "name": "Bypass" }
+    },
+    {
+      "id": "e-indmain-tf",
+      "type": "pipe",
+      "source": "screen-ind",
+      "sourceHandle": "right",
+      "target": "trickling-2",
+      "targetHandle": "left",
+      "data": { "routing": "step", "streamType": "process", "flow": 2100, "showFlow": true, "name": "Industrial feed" }
+    },
+    {
+      "id": "e-tf1-sbra",
+      "type": "pipe",
+      "source": "trickling-1",
+      "sourceHandle": "right",
+      "target": "sbr-a",
+      "targetHandle": "left",
+      "data": { "routing": "step", "streamType": "process", "flow": 5200, "showFlow": true }
+    },
+    {
+      "id": "e-tf2-sbrb",
+      "type": "pipe",
+      "source": "trickling-2",
+      "sourceHandle": "right",
+      "target": "sbr-b",
+      "targetHandle": "left",
+      "data": { "routing": "step", "streamType": "process", "flow": 4200, "showFlow": true }
+    },
+    {
+      "id": "e-sbra-aer",
+      "type": "pipe",
+      "source": "sbr-a",
+      "sourceHandle": "right",
+      "target": "aeration-1",
+      "targetHandle": "left",
+      "data": { "routing": "step", "streamType": "process", "flow": 5200, "showFlow": true }
+    },
+    {
+      "id": "e-sbrb-aer",
+      "type": "pipe",
+      "source": "sbr-b",
+      "sourceHandle": "right",
+      "target": "aeration-1",
+      "targetHandle": "top",
+      "data": { "routing": "step", "streamType": "process", "flow": 4200, "showFlow": true }
+    },
+    {
+      "id": "e-aer-eff",
+      "type": "pipe",
+      "source": "aeration-1",
+      "sourceHandle": "right",
+      "target": "effluent-1",
+      "targetHandle": "left",
+      "data": { "routing": "step", "streamType": "effluent", "flow": 9400, "showFlow": true }
+    },
+    {
+      "id": "e-sbra-was",
+      "type": "pipe",
+      "label": "WAS",
+      "source": "sbr-b",
+      "sourceHandle": "bottom",
+      "target": "sludge-was",
+      "targetHandle": "left",
+      "data": { "routing": "step", "streamType": "sludge", "flow": 260, "showFlow": true, "name": "WAS" }
+    },
+    {
+      "id": "e-screen-sand",
+      "type": "pipe",
+      "label": "Screenings + sand",
+      "source": "screen-ind",
+      "sourceHandle": "bottom",
+      "target": "sludge-sand",
+      "targetHandle": "top",
+      "data": { "routing": "step", "streamType": "sludge", "name": "Grit" }
+    }
+  ],
+  "viewport": { "x": 120, "y": 180, "zoom": 0.72 },
+  "settings": { "scaleByFlow": true }
+}

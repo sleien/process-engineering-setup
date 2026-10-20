@@ -9,6 +9,7 @@ import {
   type OnConnect,
   type OnConnectEnd,
   type OnConnectStart,
+  type OnNodesChange,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 
@@ -17,6 +18,9 @@ import Palette from './components/Palette'
 import Toolbar from './components/Toolbar'
 import Inspector from './components/Inspector'
 import ColorSettings from './components/ColorSettings'
+import PresetsPanel from './components/PresetsPanel'
+import SimulationResults from './components/SimulationResults'
+import { simulate, SimError, type SimResult } from './lib/sim'
 import { FlowContext, maxFlowOf } from './lib/flow'
 import type { AppEdge, AppNode, ProjectFile } from './lib/types'
 import {
@@ -30,6 +34,15 @@ import {
 } from './lib/streams'
 import { getUnit } from './units/manifest'
 import {
+  applyPresetToSettings,
+  loadPresets,
+  loadSettings,
+  saveStore,
+  upsertPreset,
+  type Preset,
+  type SimSettings,
+} from './lib/presets'
+import {
   createJunctionNode,
   createPipeEdge,
   defaultPipeMarker,
@@ -39,12 +52,14 @@ import {
   splitEdgeWithJunction,
 } from './lib/connect'
 import {
+  GRID,
   JUNCTION_SIZE,
   alignOffset,
   edgePolyline,
   findEdgeNearPoint,
   handlePoint,
   nodeSize,
+  snapNodePosition,
   projectOnPolyline,
   projectOnSegment,
   sideTowards,
@@ -125,6 +140,51 @@ function Editor() {
   const [streamColors, setColorsState] = useState<StreamColors>(initialColors.current)
   const [colorsOpen, setColorsOpen] = useState(false)
 
+  // Simulation state (PeePyPoo backend).
+  const [simOpen, setSimOpen] = useState(false)
+  const [simulating, setSimulating] = useState(false)
+  const [simResult, setSimResult] = useState<SimResult | null>(null)
+  const [simError, setSimError] = useState<string | null>(null)
+
+  // Simulation settings (duration + named presets), persisted in the browser.
+  const initialPresetState = useRef<{ settings: SimSettings; presets: Preset[] } | null>(null)
+  if (initialPresetState.current === null) {
+    initialPresetState.current = { settings: loadSettings(), presets: loadPresets() }
+  }
+  const [simSettings, setSimSettings] = useState<SimSettings>(initialPresetState.current.settings)
+  const [simPresets, setSimPresets] = useState<Preset[]>(initialPresetState.current.presets)
+  const [presetsOpen, setPresetsOpen] = useState(false)
+  // The last result's influent composition — shown as placeholders under editable overrides.
+  const [baseComposition, setBaseComposition] = useState<Record<string, number> | undefined>(undefined)
+
+  const fireSimulation = useCallback(
+    async (overrides?: { influent_overrides?: Record<string, number> }) => {
+      setSimulating(true)
+      setSimError(null)
+      // Keep any previous results visible while the next run is in flight.
+      try {
+        const result = await simulate(nodes, edges, {
+          time_days: typeof simSettings.time_days === 'number' ? simSettings.time_days : undefined,
+          influent_flow: simSettings.influent_flow,
+          influent_overrides: overrides?.influent_overrides ?? simSettings.influent_overrides,
+        })
+        setSimResult(result)
+        setBaseComposition(result.setup.influents[0]?.composition)
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : 'Simulation failed — is the backend running? (see "Simulation" in the README).'
+        setSimError(msg)
+      } finally {
+        setSimulating(false)
+      }
+    },
+    [nodes, edges, simSettings],
+  )
+
+  const runSimulation = useCallback(() => {
+    setSimOpen(true)
+    void fireSimulation()
+  }, [fireSimulation])
+
   useEffect(() => {
     if (initial.current?.viewport) rf.setViewport(initial.current.viewport)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -146,6 +206,25 @@ function Editor() {
     setEdges,
     initial: { nodes: initial.current.nodes, edges: initial.current.edges },
   })
+
+  // Anchor-aware grid snap, replacing React Flow's built-in snapToGrid (which snaps the
+  // top-left corner): ports sit at fractional offsets inside the artwork, so corner-snapping
+  // could never put the ports of two different unit types on the same grid line. Snapping the
+  // port anchor itself means dragging any unit lands its ports on the 8px grid, so pipes
+  // between aligned units are pixel-perfect straight.
+  const onNodesChangeSnapped = useCallback<OnNodesChange<AppNode>>(
+    (changes) => {
+      const byId = new Map(rf.getNodes().map((n) => [n.id, n]))
+      onNodesChange(
+        changes.map((ch) => {
+          if (ch.type !== 'position' || !ch.position) return ch
+          const node = byId.get(ch.id)
+          return node ? { ...ch, position: snapNodePosition(node, ch.position) } : ch
+        }),
+      )
+    },
+    [onNodesChange, rf],
+  )
 
   // --- Connecting ---------------------------------------------------------
 
@@ -366,16 +445,34 @@ function Editor() {
           ),
         )
       } else {
-        // released on empty canvas → keep the dot as an open outlet (label it, e.g. "WAS")
-        setNodes((nds) => nds.map((n) => (n.id === tempId ? { ...n, className: undefined } : n)))
+        // released on empty canvas → keep the dot as an open outlet (label it, e.g. "WAS").
+        // Square the outlet up with the junction it branched from: lock the cross-axis
+        // coordinate to the junction's centre (so the branch pipe is perfectly straight,
+        // e.g. a WAS line dropping vertically) and grid-snap the along-axis coordinate.
+        const sh = sideTowards(jCenter, cursorFlow)
+        const outlet =
+          sh === 'top' || sh === 'bottom'
+            ? { x: jCenter.x, y: Math.round(cursorFlow.y / GRID) * GRID }
+            : { x: Math.round(cursorFlow.x / GRID) * GRID, y: jCenter.y }
+        setNodes((nds) =>
+          nds.map((n) =>
+            n.id === tempId
+              ? {
+                  ...n,
+                  className: undefined,
+                  position: { x: outlet.x - JUNCTION_SIZE / 2, y: outlet.y - JUNCTION_SIZE / 2 },
+                }
+              : n,
+          ),
+        )
         setEdges((eds) =>
           eds.map((ed) =>
             ed.id === branchEdgeId
               ? {
                   ...ed,
                   className: undefined,
-                  sourceHandle: sideTowards(jCenter, cursorFlow),
-                  targetHandle: sideTowards(cursorFlow, jCenter),
+                  sourceHandle: sh,
+                  targetHandle: sideTowards(outlet, jCenter),
                 }
               : ed,
           ),
@@ -493,6 +590,8 @@ function Editor() {
         position: { x: p.x - unit.width / 2, y: p.y - unit.height / 2 },
         data: { unitId: unit.id, width: unit.width, height: unit.height },
       }
+      // Land the fresh unit with its ports already on the grid (drops are otherwise unsnapped).
+      node.position = snapNodePosition(node, node.position)
       setNodes((nds) => [...nds, node])
     },
     [rf, setNodes],
@@ -575,15 +674,19 @@ function Editor() {
         if (unitNeighbors.length >= 2) moveIds.add(j.id)
       }
 
+      // Snap the alignment line itself to the grid: aligned anchors then sit exactly where a
+      // later drag-snap would put them, so dragging a node afterwards can't break the line.
       if (axis === 'h') {
         const avgY = targets.reduce((s, n) => s + n.position.y + alignOffset(n, 'h'), 0) / targets.length
+        const lineY = Math.round(avgY / GRID) * GRID
         setNodes((nds) =>
-          nds.map((n) => (moveIds.has(n.id) ? { ...n, position: { ...n.position, y: avgY - alignOffset(n, 'h') } } : n)),
+          nds.map((n) => (moveIds.has(n.id) ? { ...n, position: { ...n.position, y: lineY - alignOffset(n, 'h') } } : n)),
         )
       } else {
         const avgX = targets.reduce((s, n) => s + n.position.x + alignOffset(n, 'v'), 0) / targets.length
+        const lineX = Math.round(avgX / GRID) * GRID
         setNodes((nds) =>
-          nds.map((n) => (moveIds.has(n.id) ? { ...n, position: { ...n.position, x: avgX - alignOffset(n, 'v') } } : n)),
+          nds.map((n) => (moveIds.has(n.id) ? { ...n, position: { ...n.position, x: lineX - alignOffset(n, 'v') } } : n)),
         )
       }
     },
@@ -677,6 +780,64 @@ function Editor() {
     saveColors(streamColors)
   }, [streamColors])
 
+  // --- Simulation presets (named durations, saved in the browser) ----------
+  const persistSimPrefs = useCallback((settings: SimSettings, presets: Preset[]) => {
+    saveStore(settings, presets)
+  }, [])
+  const setSimSettingsOnly = useCallback(
+    (settings: SimSettings) => {
+      setSimSettings(settings)
+      persistSimPrefs(settings, simPresets)
+    },
+    [persistSimPrefs, simPresets],
+  )
+  const savePreset = useCallback(
+    (name: string) => {
+      const preset: Preset = { name, settings: { ...simSettings }, savedAt: new Date().toISOString() }
+      const next = upsertPreset(simPresets, preset)
+      setSimPresets(next)
+      persistSimPrefs(simSettings, next)
+    },
+    [persistSimPrefs, simPresets, simSettings],
+  )
+  const applyPreset = useCallback(
+    (p: Preset) => {
+      const next = applyPresetToSettings(simSettings, p)
+      setSimSettings(next)
+      persistSimPrefs(next, simPresets)
+    },
+    [persistSimPrefs, simPresets, simSettings],
+  )
+  const deletePreset = useCallback(
+    (name: string) => {
+      const next = simPresets.filter((p) => p.name !== name)
+      setSimPresets(next)
+      persistSimPrefs(simSettings, next)
+    },
+    [persistSimPrefs, simPresets, simSettings],
+  )
+  const importPresets = useCallback(
+    (incoming: Preset[]) => {
+      const byName = new Map(simPresets.map((p) => [p.name, p]))
+      for (const p of incoming) byName.set(p.name, p)
+      const next = [...byName.values()]
+      setSimPresets(next)
+      persistSimPrefs(simSettings, next)
+    },
+    [persistSimPrefs, simPresets, simSettings],
+  )
+  const exportPresets = useCallback(() => {
+    downloadText(
+      JSON.stringify({ settings: simSettings, presets: simPresets }, null, 2),
+      'wwtp-presets.json',
+      'application/json',
+    )
+  }, [simPresets, simSettings])
+  const clearSimSettings = useCallback(() => {
+    setSimSettings({})
+    persistSimPrefs({}, simPresets)
+  }, [persistSimPrefs, simPresets])
+
   // Patch a node's / edge's data (shallow merge). Used by the Properties panel.
   const patchNode = useCallback(
     (id: string, patch: Record<string, unknown>) => {
@@ -728,12 +889,15 @@ function Editor() {
         scaleByFlow={scaleByFlow}
         onScaleByFlow={setScaleByFlow}
         onOpenColors={() => setColorsOpen(true)}
+        onOpenPresets={() => setPresetsOpen(true)}
         onSave={save}
         onOpen={open}
         onExportSvg={exportSvg}
         onExportPng={exportPng}
         onFit={fit}
         onClear={clear}
+        onSimulate={runSimulation}
+        simulating={simulating}
       />
       <div className="body">
         <Palette />
@@ -742,7 +906,7 @@ function Editor() {
             <Canvas
               nodes={nodes}
               edges={displayEdges}
-              onNodesChange={onNodesChange}
+              onNodesChange={onNodesChangeSnapped}
               onEdgesChange={onEdgesChange}
               onConnect={onConnect}
               onConnectStart={onConnectStart}
@@ -764,6 +928,39 @@ function Editor() {
         onDownload={downloadColors}
         onUpload={uploadColors}
         onClose={() => setColorsOpen(false)}
+      />
+      <PresetsPanel
+        open={presetsOpen}
+        settings={simSettings}
+        presets={simPresets}
+        baseComposition={baseComposition}
+        onSettingsChange={setSimSettingsOnly}
+        onSavePreset={savePreset}
+        onApplyPreset={applyPreset}
+        onDeletePreset={deletePreset}
+        onImport={importPresets}
+        onExport={exportPresets}
+        onClearSettings={clearSimSettings}
+        onClose={() => setPresetsOpen(false)}
+      />
+      <SimulationResults
+        open={simOpen}
+        result={simResult}
+        loading={simulating}
+        error={simError}
+        onClose={() => setSimOpen(false)}
+        onReRun={(overrides) => {
+          // Edits made in the results modal become the new defaults, so the presets stay honest.
+          if (overrides) {
+            const next = { ...simSettings }
+            if (overrides.influent_flow == null) delete next.influent_flow
+            else next.influent_flow = overrides.influent_flow
+            if (overrides.influent_overrides) next.influent_overrides = { ...next.influent_overrides, ...overrides.influent_overrides }
+            setSimSettings(next)
+            persistSimPrefs(next, simPresets)
+          }
+          void fireSimulation(overrides)
+        }}
       />
     </div>
   )

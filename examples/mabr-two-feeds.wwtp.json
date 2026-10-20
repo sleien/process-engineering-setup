@@ -1,0 +1,84 @@
+{
+  "version": 1,
+  "nodes": [
+    {
+      "id": "influent-1",
+      "type": "unit",
+      "position": { "x": 40, "y": 40 },
+      "data": {
+        "unitId": "influent",
+        "width": 75,
+        "height": 75,
+        "name": "Domestic influent",
+        "attributes": { "Q": "1500" },
+        "showAttrs": true
+      }
+    },
+    {
+      "id": "influent-2",
+      "type": "unit",
+      "position": { "x": 40, "y": 260 },
+      "data": {
+        "unitId": "influent",
+        "width": 75,
+        "height": 75,
+        "name": "Industrial side-feed",
+        "attributes": { "Q": "500", "S_S": "140" },
+        "showAttrs": true
+      }
+    },
+    {
+      "id": "mabr-1",
+      "type": "unit",
+      "position": { "x": 340, "y": 60 },
+      "data": {
+        "unitId": "MABR",
+        "width": 253,
+        "height": 155,
+        "name": "MABR basin",
+        "attributes": { "V": "1200", "kLa": "250" },
+        "showAttrs": true
+      }
+    },
+    {
+      "id": "aer-2",
+      "type": "unit",
+      "position": { "x": 720, "y": 60 },
+      "data": {
+        "unitId": "aerated_CSTR",
+        "width": 160,
+        "height": 98,
+        "name": "Secondary aeration",
+        "attributes": { "V": "800", "kLa": "320" },
+        "showAttrs": true
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "source": "influent-1",
+      "target": "mabr-1",
+      "sourceHandle": "right",
+      "targetHandle": "left",
+      "data": { "routing": "straight", "streamType": "influent", "showFlow": true }
+    },
+    {
+      "id": "e2",
+      "source": "influent-2",
+      "target": "mabr-1",
+      "sourceHandle": "right",
+      "targetHandle": "left",
+      "data": { "routing": "straight", "streamType": "influent", "showFlow": true }
+    },
+    {
+      "id": "e3",
+      "source": "mabr-1",
+      "target": "aer-2",
+      "sourceHandle": "right",
+      "targetHandle": "left",
+      "data": { "routing": "straight", "streamType": "process", "showFlow": true }
+    }
+  ],
+  "viewport": { "x": 0, "y": 0, "zoom": 1 }
+}

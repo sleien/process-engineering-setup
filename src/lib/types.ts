@@ -1,5 +1,6 @@
 import type { Node, Edge } from '@xyflow/react'
 import type { StreamType } from './streams'
+import type { Controller } from './controller'
 
 /** A treatment unit (renders one of the SVG assets). */
 export type UnitNodeData = {
@@ -12,6 +13,8 @@ export type UnitNodeData = {
   attributes?: Record<string, string>
   /** Show a small attribute readout (V, MLSS, …) under the unit on the canvas. */
   showAttrs?: boolean
+  /** Optional controller for aerated units (re-evaluated each `period_days`). */
+  controller?: Controller
 }
 
 /** A free, editable text label (e.g. "275 m³"). */

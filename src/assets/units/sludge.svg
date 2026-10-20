@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Excess sludge (WAS): a settling tank with a sludge level at the bottom and a
+     discharge pipe with a gate valve — marks where waste sludge leaves the plant.
+     Same stroke style / canvas scale as the other unit SVGs. -->
+<svg
+   width="20mm"
+   height="17.5mm"
+   viewBox="0 0 75 67"
+   version="1.1"
+   xmlns="http://www.w3.org/2000/svg">
+   <!-- Tank (rounded rectangle) -->
+   <rect x="14" y="8" width="28" height="50" rx="4"
+         fill="none" stroke="#000000" stroke-width="1.6"/>
+   <!-- Sludge level (wavy surface) -->
+   <path d="M 15 36 q 3.5 -3 7 0 t 7 0 t 7 0" fill="none" stroke="#000000"
+         stroke-width="1.4" stroke-linecap="round"/>
+   <!-- Sludge dots -->
+   <g fill="#000000">
+     <circle cx="22" cy="44" r="1.4"/>
+     <circle cx="30" cy="48" r="1.4"/>
+     <circle cx="27" cy="41" r="1.4"/>
+     <circle cx="36" cy="51" r="1.4"/>
+     <circle cx="35" cy="43" r="1.4"/>
+   </g>
+   <!-- Discharge pipe -->
+   <rect x="42" y="36" width="16" height="11" rx="1.5"
+         fill="none" stroke="#000000" stroke-width="1.6"/>
+   <!-- Gate valve diamond -->
+   <path d="M 62 34 L 69 41.5 L 62 49 L 55 41.5 Z"
+         fill="none" stroke="#000000" stroke-width="1.6" stroke-linejoin="round"/>
+   <line x1="58" y1="38" x2="66" y2="45" stroke="#000000" stroke-width="1.2"/>
+   <!-- Flow chevrons in the discharge pipe -->
+   <path d="M 45 37 L 49 41.5 L 45 46" fill="none" stroke="#000000"
+         stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+   <!-- "WAS" label under the tank -->
+   <text x="28" y="65" font-family="sans-serif" font-size="9" font-weight="bold"
+         fill="#000000" text-anchor="middle">WAS</text>
+</svg>

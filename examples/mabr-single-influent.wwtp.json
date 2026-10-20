@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "nodes": [
+    {
+      "id": "influent-1",
+      "type": "unit",
+      "position": { "x": 60, "y": 160 },
+      "data": {
+        "unitId": "influent",
+        "width": 75,
+        "height": 75,
+        "name": "Influent A (2000 m³/d)",
+        "attributes": { "Q": "2000" },
+        "showAttrs": true
+      }
+    },
+    {
+      "id": "mabr-1",
+      "type": "unit",
+      "position": { "x": 340, "y": 60 },
+      "data": {
+        "unitId": "MABR",
+        "width": 253,
+        "height": 155,
+        "name": "MABR basin",
+        "attributes": { "V": "1200", "kLa": "250" },
+        "showAttrs": true
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge-influent-mabr",
+      "source": "influent-1",
+      "target": "mabr-1",
+      "sourceHandle": "right",
+      "targetHandle": "left",
+      "data": { "routing": "straight", "streamType": "influent", "showFlow": true }
+    }
+  ],
+  "viewport": { "x": 0, "y": 0, "zoom": 1 }
+}
