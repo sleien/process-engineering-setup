@@ -1,6 +1,11 @@
 # Dependencies
 node_modules/
 
+# Python (simulation backend)
+server/.venv/
+__pycache__/
+*.pyc
+
 # Build output
 dist/
 
@@ -17,3 +22,7 @@ npm-debug.log*
 .env
 .env.local
 .env.*.local
+
+SUMO_examples/
+# Saved simulation runs (server/history.py)
+server/history/

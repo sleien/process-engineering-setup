@@ -1,0 +1,158 @@
+{
+ "version": 1,
+ "nodes": [
+  {
+   "id": "influent",
+   "type": "unit",
+   "position": {
+    "x": 0,
+    "y": 60
+   },
+   "data": {
+    "unitId": "influent",
+    "width": 75,
+    "height": 75,
+    "name": "High-strength influent",
+    "attributes": {
+     "Q": "0.2",
+     "S_I": "983.8",
+     "S_S": "2951.2",
+     "X_I": "23367.8",
+     "X_S": "40059.0",
+     "X_BH": "3338.2",
+     "X_BA": "0.0",
+     "X_P": "0.0",
+     "S_O": "0.0",
+     "S_NO": "0.0",
+     "S_NH": "1650.0",
+     "S_ND": "308.0",
+     "X_ND": "1201.8",
+     "S_ALK": "209.0",
+     "S_N2": "0.0"
+    },
+    "showAttrs": true,
+    "controllers": [
+     {
+      "target": "Q",
+      "otherwise": "hold",
+      "period_days": 0.001388888888888889,
+      "rules": [
+       {
+        "at": "cstr",
+        "when": "pH",
+        "op": "<",
+        "value": 6.2,
+        "set": 0.2
+       },
+       {
+        "at": "cstr",
+        "when": "pH",
+        "op": ">",
+        "value": 6.25,
+        "set": 0
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "cstr",
+   "type": "unit",
+   "position": {
+    "x": 220,
+    "y": 50
+   },
+   "data": {
+    "unitId": "aerated_CSTR",
+    "width": 110,
+    "height": 90,
+    "name": "Nitrification CSTR",
+    "attributes": {
+     "V": "1.0",
+     "MLSS": "3000.0",
+     "kLa": "600.0",
+     "CO2": "1.0",
+     "pH0": "6.3"
+    },
+    "showAttrs": true
+   }
+  },
+  {
+   "id": "effluent",
+   "type": "unit",
+   "position": {
+    "x": 440,
+    "y": 60
+   },
+   "data": {
+    "unitId": "effluent",
+    "width": 75,
+    "height": 75,
+    "name": "Effluent",
+    "attributes": {},
+    "showAttrs": true
+   }
+  },
+  {
+   "id": "note-control",
+   "type": "text",
+   "position": {
+    "x": 0,
+    "y": 230
+   },
+   "data": {
+    "text": "pH-controlled feed: the influent runs at 0.2 m\u00b3/d while the pH in the CSTR is below 6.20 and\nstops once it is above 6.25; in between it keeps doing what it did (hysteresis). The controller\nchecks every two minutes. pH is estimated from the alkalinity with 1 mmol/L dissolved CO2.\nSimulate 30 days (Run settings): the band holds from about day 1, the nitrifiers settle over\nweeks.",
+    "fontSize": 13
+   }
+  },
+  {
+   "id": "note-influent",
+   "type": "text",
+   "position": {
+    "x": 0,
+    "y": 320
+   },
+   "data": {
+    "text": "Influent analysis: COD 70700 (soluble 3935), TOC 13525, DOC 1159, NH4-N 1650, N soluble 1958,\nalkalinity 209 mmol/L, pH 8.61; Cl 1430, Na 626, K 4011, SO4 < 8 mg/L (no ASM1 state). The\nfractionation and its assumptions are in the generator script next to this example.",
+    "fontSize": 13
+   }
+  }
+ ],
+ "edges": [
+  {
+   "id": "e-in",
+   "type": "pipe",
+   "source": "influent",
+   "sourceHandle": "right",
+   "target": "cstr",
+   "targetHandle": "left",
+   "data": {
+    "routing": "step",
+    "streamType": "influent",
+    "showFlow": false
+   }
+  },
+  {
+   "id": "e-out",
+   "type": "pipe",
+   "source": "cstr",
+   "sourceHandle": "right",
+   "target": "effluent",
+   "targetHandle": "left",
+   "data": {
+    "routing": "step",
+    "streamType": "effluent",
+    "showFlow": false
+   }
+  }
+ ],
+ "viewport": {
+  "x": 60,
+  "y": 60,
+  "zoom": 1.0
+ },
+ "settings": {
+  "scaleByFlow": false
+ }
+}

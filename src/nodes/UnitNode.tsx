@@ -32,7 +32,7 @@ function UnitNodeComponent({ data, selected }: NodeProps<UnitNode>) {
       {readout.length > 0 && (
         <div className="unit-readout">
           {readout.map((r) => (
-            <div className="unit-readout-line" key={r.key}>
+            <div className={`unit-readout-line${r.key === '__more' ? ' more' : ''}`} key={r.key}>
               {r.text}
             </div>
           ))}

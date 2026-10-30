@@ -85,9 +85,15 @@ export const UNITS: UnitDef[] = [
   { id: 'sbr', label: 'SBR', url: sbrUrl, raw: sbrRaw, viewBox: '0 0 90.089169 57.001833', width: 90, height: 57 },
   { id: 'trickling_filter', label: 'Trickling filter', url: tricklingUrl, raw: tricklingRaw, viewBox: '0 0 84.46463 50.183843', width: 84, height: 50 },
   { id: 'MBR', label: 'Membrane reactor (MBR)', url: mbrUrl, raw: mbrRaw, viewBox: '0 0 253 155', width: 253, height: 155, ports: { side: 0.5 } },
-  { id: 'MBBR', label: 'Moving bed (MBBR)', url: mbbrUrl, raw: mbbrRaw, viewBox: '0 0 253 155', width: 253, height: 155, ports: { side: 0.5 } },
-  { id: 'MABR', label: 'Moving blanket (MABR)', url: mabrUrl, raw: mabrRaw, viewBox: '0 0 253 155', width: 253, height: 155, ports: { side: 0.5 } },
+  // Same tank and canvas as the aerated CSTR, so it lines up with the other tanks.
+  { id: 'MBBR', label: 'Moving bed (MBBR)', url: mbbrUrl, raw: mbbrRaw, viewBox: '0 0 160 98', width: 160, height: 98, ports: { side: 0.516 } },
+  // A membrane column: water through the shell at mid height (the side ports), air through
+  // the fibres from bottom to top (the end ports).
+  { id: 'MABR', label: 'Membrane aerated (MABR)', url: mabrUrl, raw: mabrRaw, viewBox: '0 0 110 170', width: 110, height: 170, ports: { side: 0.5 } },
   { id: 'clarifier', label: 'Clarifier', url: clarifierUrl, raw: clarifierRaw, viewBox: '0 0 74.701605 67.425274', width: 75, height: 67 },
+  // Same artwork as the final clarifier; the simulation treats it as a settler whose
+  // sludge goes to waste, with no return — a primary or intermediate clarifier.
+  { id: 'primary_clarifier', label: 'Primary / intermediate clarifier', url: clarifierUrl, raw: clarifierRaw, viewBox: '0 0 74.701605 67.425274', width: 75, height: 67 },
   { id: 'effluent', label: 'Effluent (outfall)', url: effluentUrl, raw: effluentRaw, viewBox: '0 0 75 67', width: 75, height: 67 },
   { id: 'sludge', label: 'Sludge (WAS)', url: sludgeUrl, raw: sludgeRaw, viewBox: '0 0 75 67', width: 75, height: 67 },
 ]

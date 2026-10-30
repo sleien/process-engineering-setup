@@ -13,8 +13,10 @@ export type UnitNodeData = {
   attributes?: Record<string, string>
   /** Show a small attribute readout (V, MLSS, …) under the unit on the canvas. */
   showAttrs?: boolean
-  /** Optional controller for aerated units (re-evaluated each `period_days`). */
-  controller?: Controller
+  /** Controllers that set this unit's kLa or pumps, one per target (see lib/controller). */
+  controllers?: Controller[]
+  /** Older single kLa controller — still read, replaced by `controllers` on the next edit. */
+  controller?: Omit<Controller, 'target'>
 }
 
 /** A free, editable text label (e.g. "275 m³"). */

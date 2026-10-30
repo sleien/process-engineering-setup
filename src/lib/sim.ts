@@ -6,7 +6,7 @@
 // In production the app is served by FastAPI on the same origin, so a relative path works.
 // During Vite dev, /api/* is proxied to :8080 (see vite.config.ts).
 
-import type { AppEdge, AppNode } from './types'
+import type { AppEdge, AppNode, ProjectFile } from './types'
 
 export type ReactorRef = {
   index: number
@@ -20,6 +20,121 @@ export type ReactorRef = {
   temperature_c?: number
   /** New: set when kLa is time-varying — carries description + sine/list data. */
   kLa_report?: TimeValueDetail
+  /** Static flow through this reactor (m³/d), from the resolved flow plan. */
+  throughput_m3_per_d?: number
+  /** Where this reactor's outflow goes (empty label "Effluent / sink" = out of plant). */
+  feeds?: StreamRef[]
+  /** What arrives here — upstream reactors and influents. */
+  fed_by?: (StreamRef & { kind: 'reactor' | 'influent' | 'bypass' })[]
+  /** Set on an SBR: the fill/react/settle/decant clock driving its aeration. */
+  cycle?: CycleInfo | null
+  /** Set on a unit carrying a controlled bypass branch. */
+  bypass?: BypassInfo | null
+  /** Set on a unit that keeps its own solids (SBR, MBR). */
+  retention?: RetentionInfo | null
+  /** Set on a primary / intermediate clarifier: what it takes out of the line. */
+  settler?: SettlerInfo | null
+  /** The controllers that set something on this unit. */
+  controllers?: ControllerInfo[]
+}
+
+/** A controller as the backend wired it (see server/controllers.py `summarize`). */
+export type ControllerInfo = {
+  /** The unit it sits on. */
+  on: string
+  target: 'kLa' | 'Q_was' | 'Qr' | 'Qu'
+  target_text: string
+  unit: string
+  period_days: number
+  default: string
+  as_text: string
+}
+
+/** What one controller set over the run, as a step series. */
+export type ControlSeries = {
+  on: string
+  target: string
+  label: string
+  unit: string
+  /** How many times the setting changed. */
+  changes: number
+  t_days: number[]
+  values: number[]
+}
+
+export type SettlerInfo = {
+  /** Share of the incoming suspended solids removed (0–1). */
+  removal: number
+  underflow_m3_per_d: number
+  f_ns: number
+  as_text: string
+}
+
+export type StreamRef = {
+  id: string
+  label: string
+  flow_m3_per_d: number
+}
+
+export type CycleInfo = {
+  cycle_h: number
+  phases_h: { fill: number; react: number; settle: number; decant: number }
+  offset_h: number
+  kLa_react: number
+  as_text: string
+}
+
+export type BypassInfo = {
+  around: string
+  measured_at: string
+  when: string
+  op: string
+  value: number
+  flow_m3_per_d: number
+  base_flow_m3_per_d: number
+  period_days: number
+  as_text: string
+}
+
+export type RetentionInfo = {
+  internal_return_m3_per_d: number
+  /** Fixed waste flow, sized for the unit's sludge age. */
+  waste_m3_per_d: number
+  /** The sludge age the unit actually runs at (d). */
+  srt_d: number
+  /** The sludge age asked for; differs from `srt_d` only when it cannot be reached. */
+  srt_target_d: number
+  f_ns: number
+  as_text: string
+}
+
+export type TopologyInfo = {
+  reactor_count: number
+  street_count: number
+  /** Each parallel branch, as the reactor labels along it. */
+  streets: string[][]
+  terminals: string[]
+  sources: string[]
+}
+
+export type ClarifierInfo = {
+  name: string
+  f_ns: number
+  ras_m3_per_d: number
+  /** Fixed waste flow (m³/d). */
+  was_m3_per_d: number
+  /** The sludge age the loop runs at (d). */
+  srt_d: number
+  /** The sludge age asked for, when one was (null when the WAS was set directly). */
+  srt_target_d: number | null
+  /** Where the waste came from: the clarifier's SRT, its Q_was, or the default SRT. */
+  srt_source: 'SRT' | 'Q_was' | 'default'
+  loop_volume_m3: number
+  fed_by?: string
+  returns_to?: string
+  /** Controllers on the clarifier's pumps, if any. */
+  controllers?: ControllerInfo[]
+  control_note: string
 }
 
 export type TimeValueDetail = {
@@ -36,6 +151,8 @@ export type InfluentInfo = {
   into_reactor: string
   into_reactor_index: number
   into_reactor_id: string
+  /** A feed may be split across several reactors; `into_reactor*` is the first of these. */
+  into_reactors?: { label: string; index: number; id: string }[]
   /** Flow in m³/d **at t=0** — backward-compatible with the previous constant-only shape. */
   flow_m3_per_d: number
   /** Concentration at t=0 (mg/L) per state — backward-compatible. */
@@ -68,6 +185,10 @@ export type SimResult = {
   /** NEW: total influent flow (m³/d) sampled over time — present when any influent is
    *  time-varying; `null`/absent for an all-constant plant. */
   total_influent_flow?: number[] | null
+  /** What each controller set over the run. */
+  controls?: ControlSeries[]
+  /** Id of this run in the server's history (absent when it could not be saved). */
+  history_id?: string | null
   /** Where the plant feed enters and the effluent leaves — echoed back for the UI to show
    *  and edit. */
   setup: {
@@ -80,12 +201,20 @@ export type SimResult = {
       from_reactor: string
       from_reactor_id: string
     }
+    /** The resolved flow graph: parallel streets, where flow enters and where it leaves. */
+    topology?: TopologyInfo
+    /** Present only when a Clarifier unit is on the canvas (RAS/WAS + MLSS control). */
+    clarifier?: ClarifierInfo | null
+    /** Every controller in the plant. */
+    controllers?: ControllerInfo[]
   }
 }
 
 type Payload = {
   units: object[]
   edges: object[]
+  /** The whole diagram, kept in the run history so the run can be restored. */
+  project?: ProjectFile
   time_days?: number
   /** Optional user override for the influent flow (m³/d). */
   influent_flow?: number
@@ -97,8 +226,10 @@ function payloadFromGraph(nodes: AppNode[], edges: AppEdge[], opts: {
   time_days?: number
   influent_flow?: number
   influent_overrides?: Record<string, number>
+  project?: ProjectFile
 }): Payload {
   return {
+    ...(opts.project ? { project: opts.project } : {}),
     units: nodes
       .filter((n) => n.type === 'unit')
       .map((n) => ({ id: n.id, type: 'unit', data: n.data as Record<string, unknown> })),
@@ -131,6 +262,7 @@ export async function simulate(
     signal?: AbortSignal
     influent_flow?: number
     influent_overrides?: Record<string, number>
+    project?: ProjectFile
   } = {},
 ): Promise<SimResult> {
   const { timeoutMs = 15 * 60_000 } = opts
@@ -167,4 +299,100 @@ export async function simulate(
     window.clearTimeout(timer)
     opts.signal?.removeEventListener('abort', onAbort)
   }
+}
+
+
+// ---- Python export (server/export_python.py) -------------------------------------------
+
+/** A standalone Python script that runs this diagram's simulation on another machine. */
+export async function exportPythonScript(
+  nodes: AppNode[],
+  edges: AppEdge[],
+  opts: {
+    time_days?: number
+    influent_flow?: number
+    influent_overrides?: Record<string, number>
+    name?: string
+  } = {},
+): Promise<{ filename: string; text: string }> {
+  const res = await fetch('/api/export/python', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...payloadFromGraph(nodes, edges, opts), label: opts.name ?? 'plant' }),
+  })
+  const text = await res.text()
+  if (!res.ok) {
+    let detail = text
+    try {
+      detail = JSON.parse(text).detail ?? text
+    } catch {
+      /* keep raw body */
+    }
+    throw new SimError(typeof detail === 'string' ? detail : JSON.stringify(detail), res.status)
+  }
+  const disposition = res.headers.get('Content-Disposition') ?? ''
+  const filename = /filename="([^"]+)"/.exec(disposition)?.[1] ?? 'plant.py'
+  return { filename, text }
+}
+
+// ---- Run history (server/history.py) ------------------------------------------------
+
+export type HistoryMeta = {
+  id: string
+  /** ISO timestamp, local time of the server. */
+  created: string
+  label: string
+  status: 'ok' | 'failed'
+  elapsed_s: number
+  t_end_days: number | null
+  units: number
+  reactors: string[]
+  warnings: number
+  controllers: number
+  error: string
+  /** Effluent means over the last tenth of the run (mg/L). */
+  effluent: Partial<Record<'COD' | 'NH4' | 'NO3' | 'TN' | 'TSS' | 'O2', number>>
+}
+
+export type HistoryRecord = {
+  meta: HistoryMeta
+  project: ProjectFile | null
+  request: { time_days?: number | null; influent_flow?: number | null; influent_overrides?: Record<string, number> }
+  result: SimResult | null
+  error: string | null
+}
+
+async function historyCall<T>(path: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(`/api/history${path}`, init)
+  const text = await res.text()
+  if (!res.ok) {
+    let detail = text
+    try {
+      detail = JSON.parse(text).detail ?? text
+    } catch {
+      /* keep raw body */
+    }
+    throw new SimError(detail, res.status)
+  }
+  return JSON.parse(text) as T
+}
+
+export function listHistory(): Promise<{ runs: HistoryMeta[]; max_runs: number }> {
+  return historyCall('')
+}
+
+export function getHistoryRun(id: string): Promise<HistoryRecord> {
+  return historyCall(`/${encodeURIComponent(id)}`)
+}
+
+export function renameHistoryRun(id: string, label: string): Promise<HistoryMeta> {
+  return historyCall(`/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ label }),
+  })
+}
+
+export function deleteHistoryRun(id: string): Promise<{ ok: boolean }> {
+  return historyCall(`/${encodeURIComponent(id)}`, { method: 'DELETE' })
 }

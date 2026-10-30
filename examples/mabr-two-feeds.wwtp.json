@@ -30,11 +30,11 @@
     {
       "id": "mabr-1",
       "type": "unit",
-      "position": { "x": 340, "y": 60 },
+      "position": { "x": 412, "y": 52 },
       "data": {
         "unitId": "MABR",
-        "width": 253,
-        "height": 155,
+        "width": 110,
+        "height": 170,
         "name": "MABR basin",
         "attributes": { "V": "1200", "kLa": "250" },
         "showAttrs": true

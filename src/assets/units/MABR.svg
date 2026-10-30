@@ -1,59 +1,73 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<!-- MABR (Moving Blanket Aeration Reactor): aerated basin with blanket-style
-     aeration module suspended from above; carrier media floating throughout.
+<!-- MABR (membrane aerated biofilm reactor), drawn as a membrane column: a cylindrical
+     shell with a bundle of hollow-fibre membranes potted into both ends. Air enters the
+     fibres at the bottom and leaves at the top; oxygen passes through the fibre wall into
+     the biofilm growing on it, so there are no bubbles. The water flows through the shell,
+     around the fibres (side nozzles at mid height, where the canvas ports lock on).
      Same 96-dpi canvas as the rest of the unit library. -->
 <svg
-   width="67mm"
-   height="41mm"
-   viewBox="0 0 253 155"
+   width="29.1mm"
+   height="45mm"
+   viewBox="0 0 110 170"
    version="1.1"
    xmlns="http://www.w3.org/2000/svg">
-  <!-- Vessel -->
-  <rect x="8" y="14" width="238" height="134" rx="6"
-        fill="none" stroke="#000000" stroke-width="1.8"/>
-  <!-- Liquid level (dashed) -->
-  <path d="M 12 44 H 242" stroke="#000000" stroke-width="0.9"
-        stroke-dasharray="5 3" fill="none"/>
-
-  <!-- Carrier media (floating beads throughout the liquid zone) -->
-  <g fill="none" stroke="#000000" stroke-width="1.3">
-    <circle cx="38" cy="60" r="6"/>
-    <circle cx="64" cy="52" r="7"/>
-    <circle cx="94" cy="62" r="6"/>
-    <circle cx="124" cy="50" r="7"/>
-    <circle cx="154" cy="62" r="6"/>
-    <circle cx="184" cy="52" r="7"/>
-    <circle cx="214" cy="60" r="6"/>
-    <circle cx="48" cy="86" r="7"/>
-    <circle cx="80" cy="78" r="6"/>
-    <circle cx="112" cy="88" r="7"/>
-    <circle cx="146" cy="76" r="6"/>
-    <circle cx="178" cy="88" r="7"/>
-    <circle cx="210" cy="78" r="6"/>
-    <circle cx="34" cy="112" r="6"/>
-    <circle cx="62" cy="104" r="7"/>
-    <circle cx="96" cy="114" r="6"/>
-    <circle cx="130" cy="102" r="7"/>
-    <circle cx="164" cy="112" r="6"/>
-    <circle cx="198" cy="104" r="7"/>
-    <circle cx="228" cy="114" r="6"/>
+  <!-- Shell water nozzles (in left, out right) -->
+  <g fill="#ffffff" stroke="#000000" stroke-width="1.6">
+    <rect x="17" y="80" width="14" height="10"/>
+    <rect x="79" y="80" width="14" height="10"/>
   </g>
 
-  <!-- Blanket-style aeration module (suspended box at top-centre) -->
-  <rect x="60" y="8" width="133" height="14"
-        fill="none" stroke="#000000" stroke-width="1.8"/>
-  <!-- Air diffuser slits in the blanket module -->
-  <g stroke="#000000" stroke-width="1.2">
-    <line x1="72"  y1="22" x2="72"  y2="34"/>
-    <line x1="90"  y1="22" x2="90"  y2="34"/>
-    <line x1="108" y1="22" x2="108" y2="34"/>
-    <line x1="126" y1="22" x2="126" y2="34"/>
-    <line x1="144" y1="22" x2="144" y2="34"/>
-    <line x1="162" y1="22" x2="162" y2="34"/>
-    <line x1="180" y1="22" x2="180" y2="34"/>
+  <!-- Shell: cylinder with an elliptic top and bottom -->
+  <path d="M 30 22 V 150 A 25 6 0 0 0 80 150 V 22"
+        fill="#ffffff" stroke="#000000" stroke-width="1.8"/>
+  <ellipse cx="55" cy="22" rx="25" ry="6"
+           fill="#ffffff" stroke="#000000" stroke-width="1.8"/>
+
+  <!-- Potting at both ends, where the fibres are cast in -->
+  <g fill="#d4d4d8" stroke="#000000" stroke-width="1.1">
+    <rect x="30" y="31" width="50" height="8"/>
+    <rect x="30" y="133" width="50" height="8"/>
   </g>
 
-  <!-- Air supply header (small pipe into top of blanket) -->
-  <rect x="120" y="2" width="16" height="6"
-        fill="#ffffff" stroke="#000000" stroke-width="1.4"/>
+  <!-- Hollow fibres: biofilm (grey sleeve), fibre wall (black), lumen (white) -->
+  <g stroke-linecap="round" fill="none">
+    <g stroke="#94a77c" stroke-width="5.2" stroke-opacity="0.7" stroke-linecap="butt">
+      <path d="M 36 39 V 133"/>
+      <path d="M 41.5 39 V 133"/>
+      <path d="M 47 39 V 133"/>
+      <path d="M 52.5 39 V 133"/>
+      <path d="M 58 39 V 133"/>
+      <path d="M 63.5 39 V 133"/>
+      <path d="M 69 39 V 133"/>
+      <path d="M 74.5 39 V 133"/>
+    </g>
+    <g stroke="#000000" stroke-width="2.6" stroke-linecap="butt">
+      <path d="M 36 39 V 133"/>
+      <path d="M 41.5 39 V 133"/>
+      <path d="M 47 39 V 133"/>
+      <path d="M 52.5 39 V 133"/>
+      <path d="M 58 39 V 133"/>
+      <path d="M 63.5 39 V 133"/>
+      <path d="M 69 39 V 133"/>
+      <path d="M 74.5 39 V 133"/>
+    </g>
+    <g stroke="#ffffff" stroke-width="1.0" stroke-linecap="butt">
+      <path d="M 36 39 V 133"/>
+      <path d="M 41.5 39 V 133"/>
+      <path d="M 47 39 V 133"/>
+      <path d="M 52.5 39 V 133"/>
+      <path d="M 58 39 V 133"/>
+      <path d="M 63.5 39 V 133"/>
+      <path d="M 69 39 V 133"/>
+      <path d="M 74.5 39 V 133"/>
+    </g>
+  </g>
+
+  <!-- Air in at the bottom, exhaust out at the top (both flowing upwards) -->
+  <g fill="none" stroke="#000000" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 55 156 V 168"/>
+    <path d="M 50 163 L 55 158 L 60 163"/>
+    <path d="M 55 16 V 3"/>
+    <path d="M 50 8 L 55 3 L 60 8"/>
+  </g>
 </svg>

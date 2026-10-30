@@ -20,9 +20,11 @@ import Inspector from './components/Inspector'
 import ColorSettings from './components/ColorSettings'
 import PresetsPanel from './components/PresetsPanel'
 import SimulationResults from './components/SimulationResults'
-import { simulate, SimError, type SimResult } from './lib/sim'
+import HistoryPanel, { runName } from './components/HistoryPanel'
+import { exportPythonScript, simulate, SimError, type HistoryRecord, type SimResult } from './lib/sim'
 import { FlowContext, maxFlowOf } from './lib/flow'
-import type { AppEdge, AppNode, ProjectFile } from './lib/types'
+import type { AppEdge, AppNode, ProjectFile, UnitNode } from './lib/types'
+import { isTank } from './lib/controller'
 import {
   streamColor,
   getStreamColors,
@@ -130,6 +132,16 @@ function Editor() {
   const handModeRef = useRef(handMode)
   handModeRef.current = handMode
 
+  // Which side panels are open — a per-browser convenience, so it lives in localStorage.
+  const [panels, setPanels] = useState<Panels>(loadPanels)
+  const togglePanel = useCallback((key: keyof Panels) => {
+    setPanels((p) => {
+      const next = { ...p, [key]: !p[key] }
+      savePanels(next)
+      return next
+    })
+  }, [])
+
   // Editable stream-colour palette (persisted in the browser; download/uploadable). Push any
   // saved palette into the streams module before first paint so the canvas + exports use it.
   const initialColors = useRef<StreamColors | null>(null)
@@ -145,6 +157,10 @@ function Editor() {
   const [simulating, setSimulating] = useState(false)
   const [simResult, setSimResult] = useState<SimResult | null>(null)
   const [simError, setSimError] = useState<string | null>(null)
+  // The run history window, and — when the results window shows a run reopened from it —
+  // which run that is (null = the latest run of this session).
+  const [historyOpen, setHistoryOpen] = useState(false)
+  const [simFrom, setSimFrom] = useState<{ id: string; label: string; created: string; project: ProjectFile | null } | null>(null)
 
   // Simulation settings (duration + named presets), persisted in the browser.
   const initialPresetState = useRef<{ settings: SimSettings; presets: Preset[] } | null>(null)
@@ -161,12 +177,16 @@ function Editor() {
     async (overrides?: { influent_overrides?: Record<string, number> }) => {
       setSimulating(true)
       setSimError(null)
+      setSimFrom(null)
       // Keep any previous results visible while the next run is in flight.
       try {
+        const obj = rf.toObject()
         const result = await simulate(nodes, edges, {
           time_days: typeof simSettings.time_days === 'number' ? simSettings.time_days : undefined,
           influent_flow: simSettings.influent_flow,
           influent_overrides: overrides?.influent_overrides ?? simSettings.influent_overrides,
+          // The whole diagram goes along so the run history can restore it.
+          project: makeProject(obj.nodes as AppNode[], obj.edges as AppEdge[], obj.viewport, { scaleByFlow }),
         })
         setSimResult(result)
         setBaseComposition(result.setup.influents[0]?.composition)
@@ -177,7 +197,7 @@ function Editor() {
         setSimulating(false)
       }
     },
-    [nodes, edges, simSettings],
+    [nodes, edges, simSettings, rf, scaleByFlow],
   )
 
   const runSimulation = useCallback(() => {
@@ -727,9 +747,55 @@ function Editor() {
     [rf, setNodes, setEdges],
   )
 
+  // Put a history run's diagram back on the canvas (undoable, like any other edit).
+  const restoreProject = useCallback(
+    (project: ProjectFile | null): boolean => {
+      const p = project ? parseProject(JSON.stringify(project)) : null
+      if (!p) {
+        window.alert('This run did not keep a diagram that can be restored.')
+        return false
+      }
+      if (!window.confirm('Replace the diagram on the canvas with the one this run simulated? (You can undo with Ctrl/Cmd+Z.)')) return false
+      setNodes(p.nodes)
+      setEdges(p.edges)
+      if (p.settings?.scaleByFlow != null) setScaleByFlow(p.settings.scaleByFlow)
+      window.setTimeout(() => rf.fitView({ padding: 0.3 }), 0)
+      return true
+    },
+    [rf, setNodes, setEdges],
+  )
+
+  const openHistoryRun = useCallback((rec: HistoryRecord) => {
+    setSimResult(rec.result)
+    setSimError(rec.error)
+    setSimFrom({
+      id: rec.meta.id,
+      label: runName(rec.meta),
+      created: new Date(rec.meta.created).toLocaleString(),
+      project: rec.project,
+    })
+    setHistoryOpen(false)
+    setSimOpen(true)
+  }, [])
+
   const exportSvg = useCallback(() => {
     downloadText(serializeToSvg(rf.getNodes(), rf.getEdges(), scaleByFlow), 'plant.svg', 'image/svg+xml')
   }, [rf, scaleByFlow])
+
+  // The diagram as a Python script that runs the same simulation on another machine; the
+  // run settings go along, so it simulates what ▶ Simulate would.
+  const exportPython = useCallback(async () => {
+    try {
+      const { filename, text } = await exportPythonScript(nodes, edges, {
+        time_days: typeof simSettings.time_days === 'number' ? simSettings.time_days : undefined,
+        influent_flow: simSettings.influent_flow,
+        influent_overrides: simSettings.influent_overrides,
+      })
+      downloadText(text, filename, 'text/x-python')
+    } catch (e) {
+      window.alert(`Could not export the Python script: ${e instanceof Error ? e.message : String(e)}\n\nThe script is generated by the backend — is it running?`)
+    }
+  }, [nodes, edges, simSettings])
 
   const exportPng = useCallback(async () => {
     const blob = await svgToPng(serializeToSvg(rf.getNodes(), rf.getEdges(), scaleByFlow), 2)
@@ -873,6 +939,17 @@ function Editor() {
   const selNode = selectedNodes.length === 1 ? selectedNodes[0] : undefined
   const selEdge = !selNode && selectedEdges.length === 1 ? selectedEdges[0] : undefined
 
+  // Tanks a controller rule can measure in, named as on the canvas (two unnamed tanks of
+  // one type are told apart by their id).
+  const tanks = useMemo(() => {
+    const list = nodes
+      .filter((n): n is UnitNode => n.type === 'unit' && isTank(n.data.unitId))
+      .map((n) => ({ id: n.id, label: n.data.name?.trim() || getUnit(n.data.unitId)?.label || n.id }))
+    const seen = new Map<string, number>()
+    for (const t of list) seen.set(t.label, (seen.get(t.label) ?? 0) + 1)
+    return list.map((t) => ((seen.get(t.label) ?? 0) > 1 ? { ...t, label: `${t.label} (${t.id})` } : t))
+  }, [nodes])
+
   return (
     <div className="app">
       <Toolbar
@@ -890,17 +967,21 @@ function Editor() {
         onScaleByFlow={setScaleByFlow}
         onOpenColors={() => setColorsOpen(true)}
         onOpenPresets={() => setPresetsOpen(true)}
+        onOpenHistory={() => setHistoryOpen(true)}
         onSave={save}
         onOpen={open}
         onExportSvg={exportSvg}
         onExportPng={exportPng}
+        onExportPython={exportPython}
         onFit={fit}
         onClear={clear}
         onSimulate={runSimulation}
         simulating={simulating}
+        panels={panels}
+        onTogglePanel={togglePanel}
       />
       <div className="body">
-        <Palette />
+        {panels.units && <Palette />}
         <FlowContext.Provider value={flowValue}>
           <HandModeContext.Provider value={handMode}>
             <Canvas
@@ -918,7 +999,9 @@ function Editor() {
             />
           </HandModeContext.Provider>
         </FlowContext.Provider>
-        <Inspector node={selNode} edge={selEdge} onPatchNode={patchNode} onPatchEdge={patchEdge} />
+        {panels.properties && (
+          <Inspector node={selNode} edge={selEdge} tanks={tanks} onPatchNode={patchNode} onPatchEdge={patchEdge} />
+        )}
       </div>
       <ColorSettings
         open={colorsOpen}
@@ -943,11 +1026,24 @@ function Editor() {
         onClearSettings={clearSimSettings}
         onClose={() => setPresetsOpen(false)}
       />
+      <HistoryPanel
+        open={historyOpen}
+        currentId={simFrom?.id ?? simResult?.history_id ?? null}
+        onClose={() => setHistoryOpen(false)}
+        onOpenRun={openHistoryRun}
+        onRestoreRun={(rec) => {
+          if (restoreProject(rec.project)) setHistoryOpen(false)
+        }}
+      />
       <SimulationResults
         open={simOpen}
         result={simResult}
         loading={simulating}
         error={simError}
+        fromHistory={simFrom}
+        onRestore={() => {
+          if (simFrom && restoreProject(simFrom.project)) setSimOpen(false)
+        }}
         onClose={() => setSimOpen(false)}
         onReRun={(overrides) => {
           // Edits made in the results modal become the new defaults, so the presets stay honest.
@@ -964,6 +1060,27 @@ function Editor() {
       />
     </div>
   )
+}
+
+type Panels = { units: boolean; properties: boolean }
+const PANELS_KEY = 'wwtp-designer:panels'
+
+function loadPanels(): Panels {
+  try {
+    const p = JSON.parse(localStorage.getItem(PANELS_KEY) ?? 'null')
+    if (p && typeof p === 'object') return { units: p.units !== false, properties: p.properties !== false }
+  } catch {
+    /* storage unavailable or corrupt — fall back to both open */
+  }
+  return { units: true, properties: true }
+}
+
+function savePanels(p: Panels): void {
+  try {
+    localStorage.setItem(PANELS_KEY, JSON.stringify(p))
+  } catch {
+    /* storage unavailable — the choice just isn't remembered */
+  }
 }
 
 export default function App() {

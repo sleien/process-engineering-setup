@@ -1,0 +1,308 @@
+{
+ "version": 1,
+ "nodes": [
+  {
+   "id": "feed",
+   "type": "unit",
+   "position": {
+    "x": 0,
+    "y": 180
+   },
+   "data": {
+    "unitId": "influent",
+    "width": 75,
+    "height": 75,
+    "name": "Plant feed",
+    "attributes": {
+     "Q": "2000"
+    },
+    "showAttrs": true
+   }
+  },
+  {
+   "id": "sbr-a",
+   "type": "unit",
+   "position": {
+    "x": 220,
+    "y": 40
+   },
+   "data": {
+    "unitId": "sbr",
+    "width": 110,
+    "height": 90,
+    "name": "SBR street A",
+    "attributes": {
+     "V": "1500",
+     "MLSS": "3500",
+     "DO": "2",
+     "SRT": "12",
+     "kLa": "300",
+     "f_ns": "0.002",
+     "cycle": "6",
+     "fill": "1",
+     "react": "3",
+     "settle": "0.75",
+     "decant": "1.25",
+     "offset": "0"
+    },
+    "showAttrs": true,
+    "bypass": {
+     "when": "COD/N",
+     "op": ">",
+     "value": 6.0,
+     "flow": 200,
+     "base_flow": 20,
+     "period_days": 0.1,
+     "rejoin_at": "polish"
+    }
+   }
+  },
+  {
+   "id": "sbr-b",
+   "type": "unit",
+   "position": {
+    "x": 220,
+    "y": 300
+   },
+   "data": {
+    "unitId": "sbr",
+    "width": 110,
+    "height": 90,
+    "name": "SBR street B",
+    "attributes": {
+     "V": "1000",
+     "MLSS": "3500",
+     "DO": "2",
+     "SRT": "12",
+     "kLa": "300",
+     "f_ns": "0.002",
+     "cycle": "6",
+     "fill": "1",
+     "react": "3",
+     "settle": "0.75",
+     "decant": "1.25",
+     "offset": "3"
+    },
+    "showAttrs": true
+   }
+  },
+  {
+   "id": "polish",
+   "type": "unit",
+   "position": {
+    "x": 440,
+    "y": 180
+   },
+   "data": {
+    "unitId": "aerated_CSTR",
+    "width": 110,
+    "height": 90,
+    "name": "Polishing aeration",
+    "attributes": {
+     "V": "400",
+     "MLSS": "3000",
+     "DO": "2",
+     "kLa": "200"
+    },
+    "showAttrs": true,
+    "controllers": [
+     {
+      "target": "kLa",
+      "period_days": 0.05,
+      "rules": [
+       {
+        "when": "S_O",
+        "op": ">",
+        "value": 2.5,
+        "set": 50
+       },
+       {
+        "when": "S_O",
+        "op": "<",
+        "value": 1.5,
+        "set": 400
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "clarifier",
+   "type": "unit",
+   "position": {
+    "x": 620,
+    "y": 180
+   },
+   "data": {
+    "unitId": "clarifier",
+    "width": 140,
+    "height": 90,
+    "name": "Final clarifier",
+    "attributes": {
+     "A": "300",
+     "depth": "3.5",
+     "SOR": "0.8",
+     "Qr": "1500",
+     "Q_was": "60",
+     "MLSS": "3000",
+     "f_ns": "0.005"
+    },
+    "showAttrs": true
+   }
+  },
+  {
+   "id": "effluent",
+   "type": "unit",
+   "position": {
+    "x": 820,
+    "y": 190
+   },
+   "data": {
+    "unitId": "effluent",
+    "width": 75,
+    "height": 75,
+    "name": "Treated effluent",
+    "attributes": {},
+    "showAttrs": true
+   }
+  },
+  {
+   "id": "was",
+   "type": "unit",
+   "position": {
+    "x": 620,
+    "y": 350
+   },
+   "data": {
+    "unitId": "sludge",
+    "width": 75,
+    "height": 75,
+    "name": "Waste sludge (WAS)",
+    "attributes": {},
+    "showAttrs": true
+   }
+  },
+  {
+   "id": "note",
+   "type": "text",
+   "position": {
+    "x": 0,
+    "y": 470
+   },
+   "data": {
+    "text": "Small, fast demo of the DAG features: one feed split across two parallel SBR streets whose 6 h\ncycles run 3 h apart, a COD/N bypass around street A that rejoins at the polishing tank, and a final\nclarifier closing the sludge loop. Runs in a couple of minutes; see sumo-parallel-sbr.wwtp.json for\nthe full plant.",
+    "fontSize": 14
+   }
+  }
+ ],
+ "edges": [
+  {
+   "id": "e-feed-a",
+   "type": "pipe",
+   "source": "feed",
+   "sourceHandle": "right",
+   "target": "sbr-a",
+   "targetHandle": "left",
+   "data": {
+    "routing": "step",
+    "streamType": "influent",
+    "showFlow": true,
+    "flow": 1200
+   }
+  },
+  {
+   "id": "e-feed-b",
+   "type": "pipe",
+   "source": "feed",
+   "sourceHandle": "right",
+   "target": "sbr-b",
+   "targetHandle": "left",
+   "data": {
+    "routing": "step",
+    "streamType": "influent",
+    "showFlow": true,
+    "flow": 800
+   }
+  },
+  {
+   "id": "e-a-polish",
+   "type": "pipe",
+   "source": "sbr-a",
+   "sourceHandle": "right",
+   "target": "polish",
+   "targetHandle": "left",
+   "data": {
+    "routing": "step",
+    "streamType": "process",
+    "showFlow": true,
+    "flow": 1200
+   }
+  },
+  {
+   "id": "e-b-polish",
+   "type": "pipe",
+   "source": "sbr-b",
+   "sourceHandle": "right",
+   "target": "polish",
+   "targetHandle": "left",
+   "data": {
+    "routing": "step",
+    "streamType": "process",
+    "showFlow": true,
+    "flow": 800
+   }
+  },
+  {
+   "id": "e-polish-clar",
+   "type": "pipe",
+   "source": "polish",
+   "sourceHandle": "right",
+   "target": "clarifier",
+   "targetHandle": "left",
+   "data": {
+    "routing": "step",
+    "streamType": "process",
+    "showFlow": true,
+    "flow": 2000
+   }
+  },
+  {
+   "id": "e-clar-eff",
+   "type": "pipe",
+   "source": "clarifier",
+   "sourceHandle": "right",
+   "target": "effluent",
+   "targetHandle": "left",
+   "data": {
+    "routing": "step",
+    "streamType": "effluent",
+    "showFlow": true,
+    "flow": 1940
+   }
+  },
+  {
+   "id": "e-was",
+   "type": "pipe",
+   "source": "clarifier",
+   "sourceHandle": "bottom",
+   "target": "was",
+   "targetHandle": "top",
+   "data": {
+    "routing": "step",
+    "streamType": "sludge",
+    "showFlow": true,
+    "flow": 60,
+    "name": "WAS"
+   }
+  }
+ ],
+ "viewport": {
+  "x": 60,
+  "y": 40,
+  "zoom": 0.85
+ },
+ "settings": {
+  "scaleByFlow": true
+ }
+}

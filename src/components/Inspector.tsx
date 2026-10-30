@@ -1,20 +1,46 @@
 import { useEffect, useState } from 'react'
 import type { AppEdge, AppNode } from '../lib/types'
-import { attrPlaceholder, getUnitAttrs } from '../lib/attributes'
+import { attrPlaceholder, getUnitAttrs, type AttrDef, type AttrGroup } from '../lib/attributes'
 import { getUnit } from '../units/manifest'
 import { STREAMS, streamColor } from '../lib/streams'
-import ControllerEditor from './ControllerEditor'
-import { isAeratedUnit } from '../lib/controller'
+import ControllerEditor, { type TankRef } from './ControllerEditor'
+import { targetsFor } from '../lib/controller'
 import { ENGINE_DEFAULT_INFLUENT } from '../lib/states'
+
+// Field groups below the simulation inputs, in panel order. The design data starts folded:
+// it is what the drawing carries, and the simulation does not read it.
+const GROUPS: { id: AttrGroup; title: string; open: boolean; note?: string }[] = [
+  { id: 'cycle', title: 'SBR cycle', open: true },
+  {
+    id: 'composition',
+    title: 'Composition',
+    open: false,
+    note: 'Empty fields take the built-in BSM1 feed (shown as placeholders).',
+  },
+  {
+    id: 'ph',
+    title: 'pH estimate',
+    open: false,
+    note: 'ASM1 has no pH. It is estimated from the alkalinity: pH = 6.38 + log₁₀(S_ALK / CO₂) at 20 °C, with the dissolved CO₂ given here. An initial pH starts the tank at the alkalinity it means.',
+  },
+  {
+    id: 'design',
+    title: 'Design data',
+    open: false,
+    note: 'Shown on the drawing; the simulation does not read these.',
+  },
+]
 
 type Props = {
   node?: AppNode
   edge?: AppEdge
+  /** Every tank on the canvas, for controllers that measure somewhere else. */
+  tanks: TankRef[]
   onPatchNode: (id: string, patch: Record<string, unknown>) => void
   onPatchEdge: (id: string, patch: Record<string, unknown>) => void
 }
 
-export default function Inspector({ node, edge, onPatchNode, onPatchEdge }: Props) {
+export default function Inspector({ node, edge, tanks, onPatchNode, onPatchEdge }: Props) {
   // Local mirror for the numeric flow field so decimals type smoothly.
   const [flowText, setFlowText] = useState('')
   useEffect(() => {
@@ -27,15 +53,33 @@ export default function Inspector({ node, edge, onPatchNode, onPatchEdge }: Prop
     const unit = getUnit(node.data.unitId)
     const attrs = getUnitAttrs(node.data.unitId)
     const values = node.data.attributes ?? {}
+    const row = (a: AttrDef) => {
+      const dflt =
+        node.data.unitId === 'influent' && a.key in ENGINE_DEFAULT_INFLUENT
+          ? `${ENGINE_DEFAULT_INFLUENT[a.key]}${a.unit ? ` ${a.unit}` : ''}`
+          : attrPlaceholder(a, node.data.unitId)
+      return (
+        <label className="insp-row" key={a.key}>
+          <span className="insp-row-label">
+            {a.label}
+            {a.unit && a.unit !== '-' && <small>{a.unit}</small>}
+          </span>
+          <input
+            inputMode="decimal"
+            value={values[a.key] ?? ''}
+            placeholder={dflt}
+            title={values[a.key] || undefined}
+            onChange={(e) =>
+              onPatchNode(node.id, { attributes: { ...values, [a.key]: e.target.value } })
+            }
+          />
+        </label>
+      )
+    }
+    const main = attrs.filter((a) => !a.group)
     body = (
       <>
         <div className="insp-title">{unit?.label ?? 'Unit'}</div>
-        <div className="insp-hint insp-hint-time">
-        Any numeric field accepts three forms:<br/>
-        <code>2000</code> constant &nbsp;·&nbsp;
-        <code>[1500, 800, 2500]</code> linear profile across the run &nbsp;·&nbsp;
-        <code>1500 + 500*sin(2*pi*t/24)</code> diurnal pattern
-        </div>
         <label className="insp-field">
           <span>Name</span>
           <input
@@ -44,30 +88,31 @@ export default function Inspector({ node, edge, onPatchNode, onPatchEdge }: Prop
             onChange={(e) => onPatchNode(node.id, { name: e.target.value })}
           />
         </label>
-        {attrs.map((a) => {
-          const dflt =
-            node.data.unitId === 'influent' && a.key in ENGINE_DEFAULT_INFLUENT
-              ? `${ENGINE_DEFAULT_INFLUENT[a.key]}${a.unit ? ` ${a.unit}` : ''}`
-              : attrPlaceholder(a, node.data.unitId)
+        {main.length > 0 && (
+          <section className="insp-section">
+            <div className="insp-section-title">Simulation</div>
+            {main.map(row)}
+          </section>
+        )}
+        {GROUPS.map((g) => {
+          const fields = attrs.filter((a) => a.group === g.id)
+          if (!fields.length) return null
+          const filled = fields.filter((a) => (values[a.key] ?? '').trim() !== '').length
           return (
-            <label className="insp-field" key={a.key}>
-              <span>
-                {a.label}
-                {a.unit ? ` [${a.unit}]` : ''}
-              </span>
-              <input
-                inputMode="decimal"
-                value={values[a.key] ?? ''}
-                placeholder={dflt}
-                onChange={(e) =>
-                  onPatchNode(node.id, { attributes: { ...values, [a.key]: e.target.value } })
-                }
-              />
-            </label>
+            <details className="insp-group" key={g.id} open={g.open}>
+              <summary className="insp-section-title">
+                {g.title}
+                <span className="insp-group-count">
+                  {filled ? `${filled}/${fields.length} set` : fields.length}
+                </span>
+              </summary>
+              {g.note && <div className="insp-group-note">{g.note}</div>}
+              {fields.map(row)}
+            </details>
           )
         })}
-        {isAeratedUnit(node.data.unitId) && (
-          <ControllerEditor node={node} onPatchNode={onPatchNode} />
+        {targetsFor(node.data.unitId).length > 0 && (
+          <ControllerEditor node={node} tanks={tanks} onPatchNode={onPatchNode} />
         )}
         <label className="insp-check">
           <input
@@ -77,6 +122,14 @@ export default function Inspector({ node, edge, onPatchNode, onPatchEdge }: Prop
           />
           <span>Show values on canvas</span>
         </label>
+        <details className="insp-help">
+          <summary>Value formats</summary>
+          <div>
+            <code>2000</code> constant<br />
+            <code>[1500, 800, 2500]</code> linear profile across the run<br />
+            <code>1500 + 500*sin(2*pi*t/24)</code> pattern in time <code>t</code> (days)
+          </div>
+        </details>
       </>
     )
   } else if (node && node.type === 'text') {

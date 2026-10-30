@@ -1,0 +1,685 @@
+{
+ "version": 1,
+ "nodes": [
+  {
+   "id": "influent-munc",
+   "type": "unit",
+   "position": {
+    "x": 0,
+    "y": 60
+   },
+   "data": {
+    "unitId": "influent",
+    "width": 75,
+    "height": 75,
+    "name": "Municipal influent",
+    "attributes": {
+     "Q": "6928+1300*sin(2*pi*t/1)",
+     "S_I": "13.47",
+     "S_S": "121.21",
+     "X_I": "70.03",
+     "X_S": "312.46",
+     "X_BH": "21.55",
+     "X_BA": "0.0",
+     "X_P": "0.0",
+     "S_O": "0.0",
+     "S_NO": "0.0",
+     "S_NH": "23.42",
+     "S_ND": "5.09",
+     "X_ND": "11.88",
+     "S_ALK": "7.0",
+     "S_N2": "0.0"
+    },
+    "showAttrs": true
+   }
+  },
+  {
+   "id": "influent-ind",
+   "type": "unit",
+   "position": {
+    "x": 0,
+    "y": 520
+   },
+   "data": {
+    "unitId": "influent",
+    "width": 75,
+    "height": 75,
+    "name": "Industrial influent",
+    "attributes": {
+     "Q": "[1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 6000.0, 6000.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 6000.0, 6000.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 6000.0, 6000.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0, 1500.0]",
+     "S_I": "0.0",
+     "S_S": "0.0",
+     "X_I": "139.2",
+     "X_S": "1224.96",
+     "X_BH": "27.84",
+     "X_BA": "0.0",
+     "X_P": "0.0",
+     "S_O": "0.0",
+     "S_NO": "0.0",
+     "S_NH": "8.31",
+     "S_ND": "5.1",
+     "X_ND": "11.9",
+     "S_ALK": "7.0",
+     "S_N2": "0.0"
+    },
+    "showAttrs": true
+   }
+  },
+  {
+   "id": "screen-munc",
+   "type": "unit",
+   "position": {
+    "x": 160,
+    "y": 60
+   },
+   "data": {
+    "unitId": "screen",
+    "width": 80,
+    "height": 90,
+    "name": "Coarse screen (municipal)",
+    "attributes": {
+     "spacing": "20"
+    },
+    "showAttrs": true
+   }
+  },
+  {
+   "id": "screen-ind",
+   "type": "unit",
+   "position": {
+    "x": 160,
+    "y": 520
+   },
+   "data": {
+    "unitId": "screen",
+    "width": 80,
+    "height": 90,
+    "name": "Coarse screen (industrial)",
+    "attributes": {
+     "spacing": "20"
+    },
+    "showAttrs": true
+   }
+  },
+  {
+   "id": "vkb",
+   "type": "unit",
+   "position": {
+    "x": 300,
+    "y": 300
+   },
+   "data": {
+    "unitId": "primary_clarifier",
+    "width": 75,
+    "height": 67,
+    "name": "VKB (primary clarifier)",
+    "attributes": {
+     "removal": "0.88",
+     "Qu": "71.3"
+    },
+    "showAttrs": true
+   }
+  },
+  {
+   "id": "tf-1",
+   "type": "unit",
+   "position": {
+    "x": 440,
+    "y": 280
+   },
+   "data": {
+    "unitId": "trickling_filter",
+    "width": 130,
+    "height": 120,
+    "name": "Trickling filters 1 + 2",
+    "attributes": {
+     "V": "3500.0",
+     "MLSS": "2500.0",
+     "SRT": "25.0",
+     "recirc": "1.0",
+     "f_ns": "0.01",
+     "area": "500"
+    },
+    "showAttrs": true,
+    "bypass": {
+     "when": "S_S",
+     "op": ">",
+     "value": 5.0,
+     "flow": 500.0,
+     "base_flow": 250.0,
+     "period_days": 0.1,
+     "rejoin_at": "zkb"
+    }
+   }
+  },
+  {
+   "id": "tf-2",
+   "type": "unit",
+   "position": {
+    "x": 620,
+    "y": 280
+   },
+   "data": {
+    "unitId": "trickling_filter",
+    "width": 130,
+    "height": 120,
+    "name": "Trickling filters 3 + 4",
+    "attributes": {
+     "V": "3500.0",
+     "MLSS": "2500.0",
+     "SRT": "25.0",
+     "recirc": "1.0",
+     "f_ns": "0.01",
+     "area": "500"
+    },
+    "showAttrs": true
+   }
+  },
+  {
+   "id": "eq",
+   "type": "unit",
+   "position": {
+    "x": 800,
+    "y": 90
+   },
+   "data": {
+    "unitId": "equalization_basin",
+    "width": 110,
+    "height": 80,
+    "name": "Equalization basin",
+    "attributes": {
+     "V": "1000"
+    },
+    "showAttrs": true
+   }
+  },
+  {
+   "id": "zkb",
+   "type": "unit",
+   "position": {
+    "x": 840,
+    "y": 300
+   },
+   "data": {
+    "unitId": "primary_clarifier",
+    "width": 75,
+    "height": 67,
+    "name": "ZKB (intermediate clarifier)",
+    "attributes": {
+     "removal": "0.42",
+     "Qu": "20.5"
+    },
+    "showAttrs": true
+   }
+  },
+  {
+   "id": "sbr-a1",
+   "type": "unit",
+   "position": {
+    "x": 1000,
+    "y": 140
+   },
+   "data": {
+    "unitId": "sbr",
+    "width": 110,
+    "height": 90,
+    "name": "SBR street A",
+    "attributes": {
+     "V": "4110.0",
+     "MLSS": "4200.0",
+     "DO": "1.5",
+     "SRT": "15.0",
+     "kLa": "420.0",
+     "f_ns": "0.026",
+     "cycle": "7.4",
+     "fill": "1.5",
+     "react": "3.5",
+     "settle": "0.75",
+     "decant": "1.65",
+     "offset": "0.0"
+    },
+    "showAttrs": true,
+    "controllers": [
+     {
+      "target": "kLa",
+      "period_days": 0.01,
+      "rules": [
+       {
+        "when": "S_NH",
+        "op": "<",
+        "value": 1.5,
+        "set": 0
+       },
+       {
+        "when": "S_O",
+        "op": ">",
+        "value": 1.8,
+        "set": 60
+       },
+       {
+        "when": "S_O",
+        "op": "<",
+        "value": 1.2,
+        "set": 600
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "sbr-b1",
+   "type": "unit",
+   "position": {
+    "x": 1000,
+    "y": 460
+   },
+   "data": {
+    "unitId": "sbr",
+    "width": 110,
+    "height": 90,
+    "name": "SBR street B",
+    "attributes": {
+     "V": "4110.0",
+     "MLSS": "4200.0",
+     "DO": "1.5",
+     "SRT": "15.0",
+     "kLa": "420.0",
+     "f_ns": "0.026",
+     "cycle": "7.4",
+     "fill": "1.5",
+     "react": "3.5",
+     "settle": "0.75",
+     "decant": "1.65",
+     "offset": "1.85"
+    },
+    "showAttrs": true,
+    "controllers": [
+     {
+      "target": "kLa",
+      "period_days": 0.01,
+      "rules": [
+       {
+        "when": "S_NH",
+        "op": "<",
+        "value": 1.5,
+        "set": 0
+       },
+       {
+        "when": "S_O",
+        "op": ">",
+        "value": 1.8,
+        "set": 60
+       },
+       {
+        "when": "S_O",
+        "op": "<",
+        "value": 1.2,
+        "set": 600
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "polish",
+   "type": "unit",
+   "position": {
+    "x": 1200,
+    "y": 300
+   },
+   "data": {
+    "unitId": "aerated_CSTR",
+    "width": 110,
+    "height": 90,
+    "name": "Polishing aeration",
+    "attributes": {
+     "V": "250.0",
+     "MLSS": "3000.0",
+     "DO": "2",
+     "kLa": "250"
+    },
+    "showAttrs": true,
+    "controllers": [
+     {
+      "target": "kLa",
+      "period_days": 0.005,
+      "rules": [
+       {
+        "when": "S_O",
+        "op": ">",
+        "value": 2.5,
+        "set": 60
+       },
+       {
+        "when": "S_O",
+        "op": "<",
+        "value": 1.5,
+        "set": 600
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "effluent",
+   "type": "unit",
+   "position": {
+    "x": 1370,
+    "y": 310
+   },
+   "data": {
+    "unitId": "effluent",
+    "width": 75,
+    "height": 75,
+    "name": "Treated effluent",
+    "attributes": {},
+    "showAttrs": true
+   }
+  },
+  {
+   "id": "sludge-was",
+   "type": "unit",
+   "position": {
+    "x": 840,
+    "y": 720
+   },
+   "data": {
+    "unitId": "sludge",
+    "width": 75,
+    "height": 75,
+    "name": "Waste sludge",
+    "attributes": {},
+    "showAttrs": true
+   }
+  },
+  {
+   "id": "note-topology",
+   "type": "text",
+   "position": {
+    "x": 160,
+    "y": 820
+   },
+   "data": {
+    "text": "Sumo flowsheet: municipal and industrial feed meet at the primary clarifier (VKB) and pass trickling\nfilters 1+2 and 3+4 in series; the municipal overflow (everything above the switch's 3000 m\u00b3/d) and\nthe COD bypass go around them to the intermediate clarifier (ZKB), which feeds two parallel SBR\nstreets. Every SBR runs the same 7.4 h cycle, staggered against the other street.",
+    "fontSize": 14
+   }
+  },
+  {
+   "id": "note-bypass",
+   "type": "text",
+   "position": {
+    "x": 160,
+    "y": 900
+   },
+   "data": {
+    "text": "COD bypass: 250 m\u00b3/d around both filters to the ZKB, 500 m\u00b3/d while readily biodegradable COD in\nfilters 1+2 exceeds 5 mg/L. Filters ventilated by natural draft (backend default kLa).",
+    "fontSize": 14
+   }
+  },
+  {
+   "id": "note-run",
+   "type": "text",
+   "position": {
+    "x": 160,
+    "y": 960
+   },
+   "data": {
+    "text": "Run this project with a 21 day horizon: the industrial feed is a sampled weekly pulse stretched\nacross the simulated window, so a shorter run moves the pulses.",
+    "fontSize": 14
+   }
+  }
+ ],
+ "edges": [
+  {
+   "id": "e-munc-screen",
+   "type": "pipe",
+   "source": "influent-munc",
+   "sourceHandle": "right",
+   "target": "screen-munc",
+   "targetHandle": "left",
+   "data": {
+    "routing": "step",
+    "streamType": "influent",
+    "showFlow": true,
+    "flow": 6928.0
+   }
+  },
+  {
+   "id": "e-ind-screen",
+   "type": "pipe",
+   "source": "influent-ind",
+   "sourceHandle": "right",
+   "target": "screen-ind",
+   "targetHandle": "left",
+   "data": {
+    "routing": "step",
+    "streamType": "influent",
+    "showFlow": true,
+    "flow": 1659.8
+   }
+  },
+  {
+   "id": "e-switch",
+   "type": "pipe",
+   "source": "screen-munc",
+   "sourceHandle": "right",
+   "target": "vkb",
+   "targetHandle": "left",
+   "data": {
+    "routing": "step",
+    "streamType": "process",
+    "showFlow": true,
+    "flow": 3000.0,
+    "name": "Municipal switch"
+   }
+  },
+  {
+   "id": "e-overflow",
+   "type": "pipe",
+   "source": "screen-munc",
+   "sourceHandle": "top",
+   "target": "eq",
+   "targetHandle": "left",
+   "data": {
+    "routing": "step",
+    "streamType": "process",
+    "showFlow": true,
+    "flow": 3928.0,
+    "name": "Overflow"
+   }
+  },
+  {
+   "id": "e-ind-vkb",
+   "type": "pipe",
+   "source": "screen-ind",
+   "sourceHandle": "right",
+   "target": "vkb",
+   "targetHandle": "left",
+   "data": {
+    "routing": "step",
+    "streamType": "process",
+    "showFlow": true,
+    "flow": 1659.8
+   }
+  },
+  {
+   "id": "e-vkb-tf1",
+   "type": "pipe",
+   "source": "vkb",
+   "sourceHandle": "right",
+   "target": "tf-1",
+   "targetHandle": "left",
+   "data": {
+    "routing": "step",
+    "streamType": "process",
+    "showFlow": true,
+    "flow": 4588.5
+   }
+  },
+  {
+   "id": "e-tf1-tf2",
+   "type": "pipe",
+   "source": "tf-1",
+   "sourceHandle": "right",
+   "target": "tf-2",
+   "targetHandle": "left",
+   "data": {
+    "routing": "step",
+    "streamType": "process",
+    "showFlow": true,
+    "flow": 4588.5
+   }
+  },
+  {
+   "id": "e-tf2-eq",
+   "type": "pipe",
+   "source": "tf-2",
+   "sourceHandle": "right",
+   "target": "eq",
+   "targetHandle": "left",
+   "data": {
+    "routing": "step",
+    "streamType": "process",
+    "showFlow": true,
+    "flow": 4588.5
+   }
+  },
+  {
+   "id": "e-eq-zkb",
+   "type": "pipe",
+   "source": "eq",
+   "sourceHandle": "right",
+   "target": "zkb",
+   "targetHandle": "left",
+   "data": {
+    "routing": "step",
+    "streamType": "process",
+    "showFlow": true,
+    "flow": 8516.5
+   }
+  },
+  {
+   "id": "e-zkb-sbr-a1",
+   "type": "pipe",
+   "source": "zkb",
+   "sourceHandle": "right",
+   "target": "sbr-a1",
+   "targetHandle": "left",
+   "data": {
+    "routing": "step",
+    "streamType": "process",
+    "showFlow": true,
+    "flow": 4000.0
+   }
+  },
+  {
+   "id": "e-sbr-a1-polish",
+   "type": "pipe",
+   "source": "sbr-a1",
+   "sourceHandle": "right",
+   "target": "polish",
+   "targetHandle": "left",
+   "data": {
+    "routing": "step",
+    "streamType": "process",
+    "showFlow": true,
+    "flow": 4000.0
+   }
+  },
+  {
+   "id": "e-zkb-sbr-b1",
+   "type": "pipe",
+   "source": "zkb",
+   "sourceHandle": "right",
+   "target": "sbr-b1",
+   "targetHandle": "left",
+   "data": {
+    "routing": "step",
+    "streamType": "process",
+    "showFlow": true,
+    "flow": 4496.0
+   }
+  },
+  {
+   "id": "e-sbr-b1-polish",
+   "type": "pipe",
+   "source": "sbr-b1",
+   "sourceHandle": "right",
+   "target": "polish",
+   "targetHandle": "left",
+   "data": {
+    "routing": "step",
+    "streamType": "process",
+    "showFlow": true,
+    "flow": 4496.0
+   }
+  },
+  {
+   "id": "e-polish-eff",
+   "type": "pipe",
+   "source": "polish",
+   "sourceHandle": "right",
+   "target": "effluent",
+   "targetHandle": "left",
+   "data": {
+    "routing": "step",
+    "streamType": "effluent",
+    "showFlow": true,
+    "flow": 8496.0
+   }
+  },
+  {
+   "id": "e-vkb-sludge",
+   "type": "pipe",
+   "source": "vkb",
+   "sourceHandle": "bottom",
+   "target": "sludge-was",
+   "targetHandle": "left",
+   "data": {
+    "routing": "step",
+    "streamType": "sludge",
+    "showFlow": false,
+    "name": "Primary sludge"
+   }
+  },
+  {
+   "id": "e-zkb-sludge",
+   "type": "pipe",
+   "source": "zkb",
+   "sourceHandle": "bottom",
+   "target": "sludge-was",
+   "targetHandle": "top",
+   "data": {
+    "routing": "step",
+    "streamType": "sludge",
+    "showFlow": false,
+    "name": "Intermediate sludge"
+   }
+  },
+  {
+   "id": "e-was",
+   "type": "pipe",
+   "source": "sbr-b1",
+   "sourceHandle": "bottom",
+   "target": "sludge-was",
+   "targetHandle": "right",
+   "data": {
+    "routing": "step",
+    "streamType": "sludge",
+    "showFlow": false,
+    "name": "WAS"
+   }
+  }
+ ],
+ "viewport": {
+  "x": 40,
+  "y": 20,
+  "zoom": 0.55
+ },
+ "settings": {
+  "scaleByFlow": true
+ }
+}

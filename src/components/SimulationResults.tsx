@@ -16,6 +16,7 @@ import LineChart, { type LineSeries } from './LineChart'
 import { STATE_META, STATE_ORDER } from '../lib/states'
 import type { SimResult, InfluentInfo, TimeValueDetail } from '../lib/sim'
 import { exportSeriesCsv, exportSnapshotCsv, exportJson, type LocationMeta } from '../lib/resultsExport'
+import Menu from './Menu'
 
 const SERIES_COLORS = ['#2563eb', '#16a34a', '#db2777', '#9333ea', '#ea580c', '#0891b2', '#4d7c0f', '#b45309']
 const EFFLUENT_COLOR = '#111827'
@@ -33,6 +34,10 @@ type Props = {
   error: string | null
   onClose: () => void
   onReRun: (overrides?: SimOverrides) => void
+  /** Set when the result is a run reopened from the history rather than the latest one. */
+  fromHistory?: { label: string; created: string } | null
+  /** Put the diagram of the history run back on the canvas. */
+  onRestore?: () => void
 }
 
 /** Format a concentration for a table cell (robust to tiny / zero / missing values). */
@@ -44,7 +49,7 @@ function fmt(v: unknown): string {
   return n.toFixed(2)
 }
 
-export default function SimulationResults({ open, result, loading, error, onClose, onReRun }: Props) {
+export default function SimulationResults({ open, result, loading, error, onClose, onReRun, fromHistory, onRestore }: Props) {
   // Selected state for the compare chart.
   const [state, setState] = useState<string>('')
   // Compare (charts) vs Inspect (snapshot table).
@@ -54,6 +59,15 @@ export default function SimulationResults({ open, result, loading, error, onClos
   // Editable influent composition. Seeded from the first influent of the most recent result.
   const [composition, setComposition] = useState<Record<string, number>>({})
   const [showComposition, setShowComposition] = useState(false)
+  // Results first — the charts are what a run is for; the plant summary and the solver's
+  // messages are one click away instead of stacked above them.
+  const [tab, setTab] = useState<'results' | 'plant' | 'messages'>('results')
+  // Which controller's output the chart shows.
+  const [controlIdx, setControlIdx] = useState(0)
+  // The time window every chart on the Results tab shows — they zoom and pan together.
+  const [xDomain, setXDomain] = useState<[number, number] | null>(null)
+  // The time typed into the box next to the slider, while it is being typed.
+  const [tText, setTText] = useState<string | null>(null)
   // Key to re-seed the editor when the result identity changes.
   const seededResult = useRef<SimResult | null>(null)
 
@@ -94,6 +108,7 @@ export default function SimulationResults({ open, result, loading, error, onClos
     if (!result) return
     if (!state) setState(available[0] ?? 'S_S')
     setTimeIdx(Math.max(0, result.t_days.length - 1))
+    setXDomain(null)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [result, available.length])
 
@@ -114,7 +129,9 @@ export default function SimulationResults({ open, result, loading, error, onClos
   const anyTimeVarying =
     (result?.setup.influents.some((i) => (i.time_varying ?? []).length > 0) ?? false) ||
     (result?.reactors.some((r) => r.kLa_report?.time_dependent) ?? false)
-  const hasFlowSeries = Boolean(result?.total_influent_flow?.length)
+  // Only worth a chart when the feed actually changes; a constant feed is one number.
+  const flow = result?.total_influent_flow ?? []
+  const hasFlowSeries = flow.length > 1 && Math.max(...flow) - Math.min(...flow) > 1e-6 * Math.max(1, Math.abs(flow[0]))
 
   if (!open) return null
 
@@ -134,6 +151,29 @@ export default function SimulationResults({ open, result, loading, error, onClos
     })
   }
 
+  // Move the time slider to the sample nearest to t (a click in a chart, a typed time).
+  const pickTime = (t: number) => {
+    const ts = result?.t_days ?? []
+    if (!ts.length) return
+    let best = 0
+    for (let i = 1; i < ts.length; i++) if (Math.abs(ts[i] - t) < Math.abs(ts[best] - t)) best = i
+    setTimeIdx(best)
+    // A time outside the zoomed window brings the window to it, same width.
+    const tb = ts[best]
+    if (xDomain && (tb < xDomain[0] || tb > xDomain[1])) {
+      const half = (xDomain[1] - xDomain[0]) / 2
+      setXDomain([tb - half, tb + half])
+    }
+  }
+  const chartLink = {
+    markerT: nPts ? result!.t_days[Math.min(timeIdx, nPts - 1)] : null,
+    onPickTime: pickTime,
+    domain: xDomain,
+    onDomainChange: setXDomain,
+  }
+
+  const controls = result?.controls ?? []
+  const control = controls[Math.min(controlIdx, Math.max(0, controls.length - 1))]
   const meta = STATE_META[state]
   const currentT = nPts ? result!.t_days[Math.min(timeIdx, nPts - 1)] : 0
 
@@ -158,22 +198,29 @@ export default function SimulationResults({ open, result, loading, error, onClos
 
   return (
     <div className="modal-overlay" onMouseDown={onClose}>
-      <div className="modal sim-modal" role="dialog" aria-label="Simulation" onMouseDown={(e) => e.stopPropagation()}>
+      <div className={`modal sim-modal${result && !loading && !error ? ' sim-modal-full' : ''}`} role="dialog" aria-label="Simulation" onMouseDown={(e) => e.stopPropagation()}>
         <div className="modal-head">
-          <span>Simulation</span>
+          <span className="sim-head-title">
+            Simulation
+            {!loading && !error && result && (
+              <span className="sim-pill ok" title="Solve time · reactors · simulated days">
+                ✓ {result.elapsed_s} s · {result.reactors.length} reactor(s) · {result.t_end_days} d
+              </span>
+            )}
+          </span>
           <div className="modal-head-actions">
             {result && !loading && !error && (
-              <div className="sim-export" role="group" aria-label="Export">
-                <button type="button" className="sim-export-btn" onClick={() => exportSeriesCsv(result, locations)} title="Full time series: one row per (time, location, state)">
-                  ⤓ CSV (series)
-                </button>
-                <button type="button" className="sim-export-btn" onClick={() => exportSnapshotCsv(result, locations, Math.min(timeIdx, nPts - 1))} title={`All states and locations at t = ${currentT} d`}>
-                  ⤓ CSV (slice)
-                </button>
-                <button type="button" className="sim-export-btn" onClick={() => exportJson(result)} title="The complete result object">
-                  ⤓ JSON
-                </button>
-              </div>
+              <Menu
+                className="sim-export"
+                alignRight
+                label={<>⤓ Export</>}
+                title="Download the results"
+                items={[
+                  { label: 'Time series (CSV)', onClick: () => exportSeriesCsv(result, locations), title: 'One row per (time, location, state)' },
+                  { label: `Snapshot at t = ${currentT.toFixed(2)} d (CSV)`, onClick: () => exportSnapshotCsv(result, locations, Math.min(timeIdx, nPts - 1)), title: 'Every state in every location at the slider time' },
+                  { label: 'Full result (JSON)', onClick: () => exportJson(result), title: 'The complete result object' },
+                ]}
+              />
             )}
             <button className="modal-x" onClick={onClose} aria-label="Close">×</button>
           </div>
@@ -199,30 +246,47 @@ export default function SimulationResults({ open, result, loading, error, onClos
               </div>
             </div>
           )}
-          {!loading && !error && result && (
-            <div className="sim-banner sim-banner-ok" role="status">
-              <span className="sim-icon" aria-hidden>✓</span>
-              <div>
-                <strong>Ready</strong>
-                <div>{result.elapsed_s}s · {result.reactors.length} reactor(s) · t = {result.t_end_days} d</div>
-              </div>
+          {fromHistory && result && !loading && (
+            <div className="sim-history-note">
+              From the history: <strong>{fromHistory.label}</strong> · {fromHistory.created}. The
+              canvas may have changed since — <em>Restore this diagram</em> puts this run’s
+              diagram back.
             </div>
           )}
 
-          {/* Warnings */}
-          {result && result.warnings.length > 0 && (
-            <div className="sim-warn">
-              {result.warnings.map((w, i) => (
-                <div key={i}>• {w}</div>
-              ))}
+          {result && !loading && !error && (
+            <div className="sim-tabs" role="tablist" aria-label="Result views">
+              <button role="tab" aria-selected={tab === 'results'} className={`sim-tab-main${tab === 'results' ? ' active' : ''}`} onClick={() => setTab('results')}>
+                Results
+              </button>
+              <button role="tab" aria-selected={tab === 'plant'} className={`sim-tab-main${tab === 'plant' ? ' active' : ''}`} onClick={() => setTab('plant')}>
+                Plant
+              </button>
+              <button role="tab" aria-selected={tab === 'messages'} className={`sim-tab-main${tab === 'messages' ? ' active' : ''}`} onClick={() => setTab('messages')}>
+                Messages
+                {result.warnings.length > 0 && <span className="sim-tab-count">{result.warnings.length}</span>}
+              </button>
             </div>
           )}
 
-          {/* Setup: influents + effluent */}
-          {result && (
+          {/* Messages: everything the build and the solver had to say about this run */}
+          {result && !loading && !error && tab === 'messages' && (
+            result.warnings.length > 0 ? (
+              <ul className="sim-warn">
+                {result.warnings.map((w, i) => (
+                  <li key={i}>{w}</li>
+                ))}
+              </ul>
+            ) : (
+              <div className="sim-empty">No messages for this run.</div>
+            )
+          )}
+
+          {/* Plant: influents, effluent and the resolved flow graph */}
+          {result && !loading && !error && tab === 'plant' && (
             <section className="sim-section">
               <h3 className="sim-section-title">
-                <span>Setup</span>
+                <span>Feed and effluent</span>
                 {dirty && <span className="sim-dirty">unsaved changes</span>}
               </h3>
 
@@ -315,15 +379,71 @@ export default function SimulationResults({ open, result, loading, error, onClos
                     <span className="sim-setup-unit">(source reactor)</span>
                   </div>
                   <div className="sim-setup-note">
-                    The effluent exits the last reactor in the simulated train.
+                    {result.setup.clarifier
+                      ? `Clarified by ${result.setup.clarifier.name} — RAS ${result.setup.clarifier.ras_m3_per_d} m³/d back to ${result.setup.clarifier.returns_to ?? 'the head of its street'}.`
+                      : 'The effluent exits the last reactor of the simulated plant.'}
                   </div>
                 </div>
               </div>
+
+              {/* The resolved flow graph: which reactors run in parallel, what each one
+                  feeds, and which units carry a cycle, a bypass or their own solids. */}
+              {result.setup.topology && (
+                <div className="sim-topology">
+                  <div className="sim-setup-note">
+                    {result.setup.topology.reactor_count} reactor(s) on{' '}
+                    {result.setup.topology.street_count} branch(es). Feed enters at{' '}
+                    {result.setup.topology.sources.join(', ')}; the plant ends at{' '}
+                    {result.setup.topology.terminals.join(', ')}.
+                  </div>
+                  <ul className="sim-topology-list">
+                    {result.reactors.map((r) => (
+                      <li key={r.index}>
+                        <strong>{r.label}</strong>
+                        {r.throughput_m3_per_d != null && (
+                          <span className="sim-setup-unit"> {r.throughput_m3_per_d} m³/d</span>
+                        )}
+                        {(r.feeds ?? []).length > 0 && (
+                          <span className="sim-setup-unit">
+                            {' → '}
+                            {(r.feeds ?? [])
+                              .map((f) => `${f.label} (${f.flow_m3_per_d} m³/d)`)
+                              .join(' + ')}
+                          </span>
+                        )}
+                        {r.cycle && <div className="sim-topology-tag">⟳ {r.cycle.as_text}</div>}
+                        {r.retention && (
+                          <div className="sim-topology-tag">◇ {r.retention.as_text}</div>
+                        )}
+                        {r.settler && (
+                          <div className="sim-topology-tag">▽ {r.settler.as_text}</div>
+                        )}
+                        {r.bypass && <div className="sim-topology-tag">⤳ {r.bypass.as_text}</div>}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {(result.setup.controllers ?? []).length > 0 && (
+                <div className="sim-topology">
+                  <div className="sim-setup-note">Controllers</div>
+                  <ul className="sim-topology-list">
+                    {(result.setup.controllers ?? []).map((c) => (
+                      <li key={`${c.on}-${c.target}`}>
+                        <strong>{c.on}</strong>
+                        <span className="sim-setup-unit"> · every {c.period_days.toFixed(3)} d</span>
+                        <div className="sim-topology-tag">⚙ {c.as_text}</div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </section>
           )}
 
           {/* Explore: compare (charts) or inspect (time slider + snapshot table) */}
-          {result && !loading && !error && (
+          {result && !loading && !error && tab === 'results' && (
             <section className="sim-section">
               <div className="sim-explore-head">
                 <h3 className="sim-section-title" style={{ margin: 0 }}>
@@ -351,10 +471,33 @@ export default function SimulationResults({ open, result, loading, error, onClos
 
               {/* Time slider — available in both modes */}
               <div className="sim-slider">
-                <label className="sim-slider-label" htmlFor="sim-time">
+                <label className="sim-slider-label" htmlFor="sim-time-input">
                   Time
                   <span className="sim-slider-t">
-                    t = <strong>{currentT.toFixed(2)}</strong> d
+                    t =
+                    <input
+                      id="sim-time-input"
+                      className="sim-time-input"
+                      type="number"
+                      step="any"
+                      min={0}
+                      max={result.t_end_days}
+                      value={tText ?? currentT.toFixed(3)}
+                      onChange={(e) => setTText(e.target.value)}
+                      onBlur={(e) => {
+                        // Read the field, not the state: typing and leaving can land in one
+                        // render, and the state would still hold the old text.
+                        const v = Number(e.currentTarget.value)
+                        if (e.currentTarget.value.trim() !== '' && Number.isFinite(v)) pickTime(v)
+                        setTText(null)
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
+                        if (e.key === 'Escape') setTText(null)
+                      }}
+                      title="Type a time in days, or click a chart"
+                    />
+                    d
                     {result.t_end_days ? <small> / {result.t_end_days} d</small> : null}
                   </span>
                 </label>
@@ -390,15 +533,7 @@ export default function SimulationResults({ open, result, loading, error, onClos
                   <div className="sim-chart-title">
                     {meta.label} <small>({meta.unit})</small>
                   </div>
-                  <div className="sim-legend">
-                    {chartSeries.map((s) => (
-                      <span key={s.label} className="sim-legend-item">
-                        <i style={{ background: s.color }} />
-                        {s.label}
-                      </span>
-                    ))}
-                  </div>
-                  <LineChart time={result.t_days} series={chartSeries} unit={meta.unit} />
+                  <LineChart time={result.t_days} series={chartSeries} unit={meta.unit} {...chartLink} />
                 </>
               )}
 
@@ -446,27 +581,62 @@ export default function SimulationResults({ open, result, loading, error, onClos
             </section>
           )}
 
+          {/* What the controllers did: the setting each one wrote, over the run */}
+          {result && !loading && !error && tab === 'results' && control && (
+            <section className="sim-section">
+              <h3 className="sim-section-title">
+                Controller outputs <small>(what each controller set)</small>
+              </h3>
+              {controls.length > 1 && (
+                <div className="sim-state-tabs" role="tablist">
+                  {controls.map((c, i) => (
+                    <button
+                      key={c.label}
+                      role="tab"
+                      aria-selected={c === control}
+                      className={`sim-tab${c === control ? ' active' : ''}`}
+                      onClick={() => setControlIdx(i)}
+                    >
+                      {c.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <div className="sim-chart-title">
+                {control.label} <small>({control.unit} · changed {control.changes}×)</small>
+              </div>
+              <LineChart
+                time={control.t_days}
+                series={[{ label: control.label, color: '#7c3aed', points: control.values }]}
+                unit={control.unit}
+                legend={false}
+                {...chartLink}
+              />
+            </section>
+          )}
+
           {/* Total influent flow over time — only when the plant feed is time-varying */}
-          {result && !loading && !error && hasFlowSeries && result.total_influent_flow && (
+          {result && !loading && !error && tab === 'results' && hasFlowSeries && result.total_influent_flow && (
             <section className="sim-section">
               <h3 className="sim-section-title">Influent flow over time <small>(total, m³/d)</small></h3>
-              <div className="sim-legend">
-                <span className="sim-legend-item">
-                  <i style={{ background: '#0d9488' }} />
-                  Total flow
-                </span>
-              </div>
               <LineChart
                 time={result.t_days}
                 series={[{ label: 'Total flow', color: '#0d9488', points: result.total_influent_flow }]}
                 unit="m³/d"
+                legend={false}
+                {...chartLink}
               />
             </section>
           )}
         </div>
 
         <div className="modal-foot sim-foot">
-          {result && !loading && !error && (
+          {fromHistory && onRestore && result && !loading && (
+            <button className="primary" onClick={onRestore} title="Replace the canvas with the diagram this run simulated">
+              ⤺ Restore this diagram
+            </button>
+          )}
+          {!fromHistory && result && !loading && !error && (
             <button
               className="primary"
               onClick={() => onReRun(collectOverrides())}

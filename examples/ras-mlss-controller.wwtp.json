@@ -1,0 +1,277 @@
+{
+ "version": 1,
+ "nodes": [
+  {
+   "id": "influent-1",
+   "type": "unit",
+   "position": {
+    "x": -5.5,
+    "y": 18.5
+   },
+   "data": {
+    "unitId": "influent",
+    "width": 75,
+    "height": 75,
+    "name": "Domestic influent",
+    "attributes": {
+     "Q": "6000 + 500*sin(2*pi*t/365)",
+     "S_S": "300",
+     "S_NH": "22.8",
+     "S_NO": "0",
+     "S_ND": "5",
+     "X_BH": "0",
+     "X_S": "0",
+     "S_ALK": "5000",
+     "X_I": "0",
+     "X_ND": "0"
+    },
+    "showAttrs": true
+   }
+  },
+  {
+   "id": "anoxic-1",
+   "type": "unit",
+   "position": {
+    "x": 320,
+    "y": -48
+   },
+   "data": {
+    "unitId": "anoxic_CSTR",
+    "width": 160,
+    "height": 152,
+    "name": "Anoxic reactor",
+    "attributes": {
+     "V": "275",
+     "MLSS": "3500"
+    },
+    "showAttrs": true
+   }
+  },
+  {
+   "id": "switch-1",
+   "type": "unit",
+   "position": {
+    "x": 536,
+    "y": -48
+   },
+   "data": {
+    "unitId": "switch_CSTR",
+    "width": 160,
+    "height": 152,
+    "name": "Switch reactor",
+    "attributes": {
+     "V": "225",
+     "MLSS": "3500"
+    },
+    "showAttrs": true
+   }
+  },
+  {
+   "id": "aerated-1",
+   "type": "unit",
+   "position": {
+    "x": 736,
+    "y": 5
+   },
+   "data": {
+    "unitId": "aerated_CSTR",
+    "width": 160,
+    "height": 98,
+    "name": "Aerated reactor",
+    "attributes": {
+     "V": "450",
+     "MLSS": "3500",
+     "kLa": "300"
+    },
+    "showAttrs": true
+   }
+  },
+  {
+   "id": "clarifier-1",
+   "type": "unit",
+   "position": {
+    "x": 970.5,
+    "y": 22.5
+   },
+   "data": {
+    "unitId": "clarifier",
+    "width": 75,
+    "height": 67,
+    "name": "Secondary clarifier",
+    "attributes": {
+     "A": "450",
+     "depth": "2",
+     "Qr": "5200",
+     "MLSS": "3500",
+     "SRT": "15",
+     "f_ns": "0"
+    },
+    "showAttrs": true,
+    "controllers": [
+     {
+      "target": "Q_was",
+      "period_days": 0.5,
+      "rules": [
+       {
+        "at": "aerated-1",
+        "when": "MLSS",
+        "op": ">",
+        "value": 4200,
+        "set": 70
+       },
+       {
+        "at": "aerated-1",
+        "when": "MLSS",
+        "op": ">",
+        "value": 3800,
+        "set": 45
+       },
+       {
+        "at": "aerated-1",
+        "when": "MLSS",
+        "op": "<",
+        "value": 3000,
+        "set": 15
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "effluent-1",
+   "type": "unit",
+   "position": {
+    "x": 1130.5,
+    "y": 22.5
+   },
+   "data": {
+    "unitId": "effluent",
+    "width": 75,
+    "height": 67,
+    "name": "Treated effluent"
+   }
+  },
+  {
+   "id": "sludge-1",
+   "type": "unit",
+   "position": {
+    "x": 1130.5,
+    "y": 102.5
+   },
+   "data": {
+    "unitId": "sludge",
+    "width": 75,
+    "height": 67,
+    "name": "WAS to thickener"
+   }
+  },
+  {
+   "id": "note-controller",
+   "type": "text",
+   "position": {
+    "x": 0,
+    "y": 242.5
+   },
+   "data": {
+    "text": "Excess-sludge controller on the clarifier, checked twice a day: while the MLSS in the aerated\nreactor is above 4200 g/m\u00b3 the WAS pump draws 70 m\u00b3/d, above 3800 g/m\u00b3 45 m\u00b3/d, below\n3000 g/m\u00b3 15 m\u00b3/d; otherwise the 29.6 m\u00b3/d sized for a 15 d sludge age. It holds the tank\nat 4100-4200 g/m\u00b3; without it the MLSS climbs to about 5400 g/m\u00b3.",
+    "fontSize": 13
+   }
+  }
+ ],
+ "edges": [
+  {
+   "id": "e-influent-anoxic",
+   "type": "pipe",
+   "source": "influent-1",
+   "sourceHandle": "right",
+   "target": "anoxic-1",
+   "targetHandle": "left",
+   "data": {
+    "routing": "step",
+    "streamType": "influent"
+   }
+  },
+  {
+   "id": "e-anoxic-switch",
+   "type": "pipe",
+   "source": "anoxic-1",
+   "sourceHandle": "right",
+   "target": "switch-1",
+   "targetHandle": "left",
+   "data": {
+    "routing": "step"
+   }
+  },
+  {
+   "id": "e-switch-aerated",
+   "type": "pipe",
+   "source": "switch-1",
+   "sourceHandle": "right",
+   "target": "aerated-1",
+   "targetHandle": "left",
+   "data": {
+    "routing": "step"
+   }
+  },
+  {
+   "id": "e-aerated-clarifier",
+   "type": "pipe",
+   "source": "aerated-1",
+   "sourceHandle": "right",
+   "target": "clarifier-1",
+   "targetHandle": "left",
+   "data": {
+    "routing": "step"
+   }
+  },
+  {
+   "id": "e-clarifier-effluent",
+   "type": "pipe",
+   "source": "clarifier-1",
+   "sourceHandle": "right",
+   "target": "effluent-1",
+   "targetHandle": "left",
+   "data": {
+    "routing": "step",
+    "streamType": "effluent"
+   }
+  },
+  {
+   "id": "e-clarifier-ras",
+   "type": "pipe",
+   "label": "RAS 5200 m\u00b3/d",
+   "source": "clarifier-1",
+   "sourceHandle": "bottom",
+   "target": "anoxic-1",
+   "targetHandle": "bottom",
+   "data": {
+    "routing": "step",
+    "streamType": "recycle",
+    "name": "RAS"
+   }
+  },
+  {
+   "id": "e-clarifier-was",
+   "type": "pipe",
+   "label": "WAS 520 m\u00b3/d",
+   "source": "clarifier-1",
+   "sourceHandle": "bottom",
+   "target": "sludge-1",
+   "targetHandle": "left",
+   "data": {
+    "routing": "step",
+    "streamType": "sludge",
+    "name": "WAS"
+   }
+  }
+ ],
+ "viewport": {
+  "x": 122,
+  "y": 366,
+  "zoom": 0.81
+ },
+ "settings": {
+  "scaleByFlow": false
+ }
+}

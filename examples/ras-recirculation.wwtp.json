@@ -78,7 +78,7 @@
           "depth": "2",
           "Qr": "5200",
           "MLSS": "3500",
-          "Q_was": "520",
+          "SRT": "15",
           "f_ns": "0"
         },
         "showAttrs": true

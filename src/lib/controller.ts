@@ -1,11 +1,15 @@
-// Controller model for aerated units — mirrors server/controllers.py.
+// Plant controllers — mirrors server/controllers.py.
 //
-// A controller is a structured rule list, re-evaluated every `period_days` of
-// simulation time. It runs inside the solver (as a discrete callback) on the
-// backend, so the frontend only stores and edits the rules.
+// A controller sits on the unit whose setting it changes (its `target`: the kLa of an
+// aerated unit, the excess-sludge or return pump of a clarifier or of a unit that keeps its
+// own solids, the underflow of a primary clarifier). Its rules measure in any tank of the
+// plant — `at` is that tank's node id, absent = the unit the controller sits on — and are
+// re-evaluated every `period_days` of simulated time inside the solver. First match wins;
+// when none matches, the target keeps its own setting (the kLa field, or the pump flow
+// the backend sized).
 //
-// Rule precedence is first-match-wins; if no rule matches, the unit's
-// `kLa` field (a number, a staged list, or a diurnal sine expression) is used.
+// Stored on the node as `data.controllers` (a list, one per target). The older single
+// `data.controller` (a kLa controller on its own tank) is still read.
 
 export const CTRL_OPS = ['<', '<=', '>', '>='] as const
 export type CtrlOp = (typeof CTRL_OPS)[number]
@@ -16,9 +20,15 @@ export type CtrlWhenState =
   | 'S_O' | 'S_NO' | 'S_NH' | 'S_ND'
   | 'X_ND' | 'S_ALK' | 'S_N2'
 
-export type CtrlWhen = CtrlWhenState | 't'
+/** What a rule can measure: an ASM1 state, suspended solids, the COD/N ratio, the pH
+ *  (estimated from alkalinity), or time. */
+export type CtrlWhen = CtrlWhenState | 'MLSS' | 'COD/N' | 'pH' | 't'
+
+export type CtrlTarget = 'kLa' | 'Q_was' | 'Qr' | 'Qu' | 'Q'
 
 export interface CtrlRule {
+  /** Node id of the tank measured in; absent = the unit the controller sits on. */
+  at?: string
   when: CtrlWhen
   op: CtrlOp
   value: number
@@ -26,113 +36,97 @@ export interface CtrlRule {
 }
 
 export interface Controller {
-  /** Days of simulated time between re-evaluations (capped [1/96, 1]). */
+  target: CtrlTarget
+  /** Days of simulated time between re-evaluations (the backend keeps it in [1/1440, 1]). */
   period_days: number
   rules: CtrlRule[]
+  /** When no rule matches: the target's own setting ('base', default) or the last setting
+   *  ('hold') — which turns an on-rule and an off-rule into a switch with hysteresis. */
+  otherwise?: 'base' | 'hold'
 }
 
-export const CTRL_STATE_OPTIONS: { value: CtrlWhenState; label: string }[] = [
-  { value: 'S_O',   label: 'Dissolved O₂ (S_O)' },
-  { value: 'S_NH',  label: 'Ammonium (S_NH)' },
-  { value: 'S_NO',  label: 'Nitrate (S_NO)' },
-  { value: 'S_S',   label: 'Soluble COD (S_S)' },
-  { value: 'S_ND',  label: 'Biodegradable N (S_ND)' },
-  { value: 'X_BH',  label: 'Heterotrophs (X_BH)' },
-  { value: 'X_BA',  label: 'Autotrophs (X_BA)' },
-  { value: 'X_S',   label: 'Particulate COD (X_S)' },
-  { value: 'X_P',   label: 'Particulate P (X_P)' },
-  { value: 'S_I',   label: 'Inert soluble (S_I)' },
-  { value: 'X_I',   label: 'Inert solids (X_I)' },
-  { value: 'X_ND',  label: 'Particulate N (X_ND)' },
-  { value: 'S_ALK', label: 'Alkalinity (S_ALK)' },
-  { value: 'S_N2',  label: 'Dinitrogen (S_N2)' },
+export const TARGETS: Record<CtrlTarget, { label: string; unit: string }> = {
+  kLa: { label: 'Aeration kLa', unit: '1/d' },
+  Q_was: { label: 'Excess sludge (WAS) pump', unit: 'm³/d' },
+  Qr: { label: 'Sludge return pump', unit: 'm³/d' },
+  Qu: { label: 'Sludge underflow', unit: 'm³/d' },
+  Q: { label: 'Influent flow', unit: 'm³/d' },
+}
+
+export const MEASURES: { value: CtrlWhen; label: string; unit: string }[] = [
+  { value: 'MLSS', label: 'MLSS', unit: 'g/m³' },
+  { value: 'pH', label: 'pH (from alkalinity)', unit: '' },
+  { value: 'S_O', label: 'Dissolved O₂ (S_O)', unit: 'mg/L' },
+  { value: 'S_NH', label: 'Ammonium (S_NH)', unit: 'mg N/L' },
+  { value: 'S_NO', label: 'Nitrate (S_NO)', unit: 'mg N/L' },
+  { value: 'S_S', label: 'Soluble COD (S_S)', unit: 'mg COD/L' },
+  { value: 'COD/N', label: 'COD/N ratio', unit: '-' },
+  { value: 'S_ND', label: 'Biodegradable N (S_ND)', unit: 'mg N/L' },
+  { value: 'X_BH', label: 'Heterotrophs (X_BH)', unit: 'mg COD/L' },
+  { value: 'X_BA', label: 'Autotrophs (X_BA)', unit: 'mg COD/L' },
+  { value: 'X_S', label: 'Particulate COD (X_S)', unit: 'mg COD/L' },
+  { value: 'X_I', label: 'Inert solids (X_I)', unit: 'mg COD/L' },
+  { value: 'X_P', label: 'Particulate products (X_P)', unit: 'mg COD/L' },
+  { value: 'X_ND', label: 'Particulate N (X_ND)', unit: 'mg N/L' },
+  { value: 'S_I', label: 'Inert soluble (S_I)', unit: 'mg COD/L' },
+  { value: 'S_ALK', label: 'Alkalinity (S_ALK)', unit: '' },
+  { value: 'S_N2', label: 'Dinitrogen (S_N2)', unit: 'mg N/L' },
+  { value: 't', label: 'Time', unit: 'd' },
 ]
 
-export function stateLabel(when: CtrlWhen): string {
-  if (when === 't') return 'time [d]'
-  return CTRL_STATE_OPTIONS.find((s) => s.value === when)?.label ?? when
+const AERATED = ['aerated_CSTR', 'aerated_CSTR_off', 'switch_CSTR', 'MBR', 'MBBR', 'MABR', 'sbr', 'trickling_filter']
+const SELF_RETAINING = ['sbr', 'MBR', 'MBBR', 'MABR', 'trickling_filter']
+const TANKS = ['CSTR', 'empty_CSTR', 'anoxic_CSTR', ...AERATED]
+
+/** What a controller on this unit can set, in the order the editor offers them. */
+export function targetsFor(unitId: string): CtrlTarget[] {
+  const out: CtrlTarget[] = []
+  if (AERATED.includes(unitId)) out.push('kLa')
+  if (SELF_RETAINING.includes(unitId) || unitId === 'clarifier') out.push('Q_was', 'Qr')
+  if (unitId === 'primary_clarifier') out.push('Qu')
+  if (unitId === 'influent') out.push('Q')
+  return out
 }
 
-export function ruleText(r: CtrlRule): string {
-  const lhs = r.when === 't' ? 'time [d]' : r.when
-  return `if ${lhs} ${r.op} ${trimNum(r.value)} then set kLa = ${trimNum(r.set)}`
+/** Units that hold mixed liquor a rule can measure in. */
+export function isTank(unitId: string): boolean {
+  return TANKS.includes(unitId)
 }
 
-export function controllerText(c: Controller, base: string): string {
-  const head = c.rules.map(ruleText).join('; ')
-  return head + `  (period ${trimNum(c.period_days)} d, default ${base})`
+export function measureUnit(when: CtrlWhen): string {
+  return MEASURES.find((m) => m.value === when)?.unit ?? ''
 }
 
-function trimNum(n: number): string {
-  return (Number.isInteger(n) ? n.toFixed(0) : String(n)).trim()
+/** The controllers on a node, reading the older single kLa `controller` too. */
+export function readControllers(data: { controllers?: Controller[]; controller?: unknown }): Controller[] {
+  if (Array.isArray(data.controllers)) return data.controllers
+  const legacy = data.controller as Omit<Controller, 'target'> | undefined
+  if (legacy && Array.isArray(legacy.rules)) return [{ ...legacy, target: 'kLa' }]
+  return []
 }
 
-export function isFiniteNum(x: unknown): x is number {
-  return typeof x === 'number' && Number.isFinite(x)
-}
-
-export function isWhenState(x: unknown): x is CtrlWhenState {
-  return CTRL_STATE_OPTIONS.some((s) => s.value === x)
-}
-
-export function isOp(x: unknown): x is CtrlOp {
-  return (CTRL_OPS as readonly string[]).includes(x as string)
-}
-
-export function whenOptions(): { value: CtrlWhen; label: string }[] {
-  return [{ value: 't', label: 'time [d] (simulation days)' }, ...CTRL_STATE_OPTIONS]
-}
-
-export function defaultController(): Controller {
-  return {
-    period_days: 0.25,
-    rules: [{ when: 'S_O', op: '>', value: 2.0, set: 100 }],
+/** A starting point for a new controller: something sensible to edit, not a tuned rule. */
+export function defaultController(target: CtrlTarget, at?: string): Controller {
+  if (target === 'kLa') {
+    return { target, period_days: 0.05, rules: [
+      { at, when: 'S_O', op: '>', value: 2.5, set: 60 },
+      { at, when: 'S_O', op: '<', value: 1.5, set: 400 },
+    ] }
   }
-}
-
-/**
- * Parse a raw value coming off the node. Returns:
- *   { ok: true, controller } if it validates;
- *   { ok: false, msg }       with a short human-readable error.
- */
-export function parseController(raw: unknown):
-  { ok: true; controller: Controller } | { ok: false; msg: string } {
-  if (raw == null) return { ok: false, msg: 'missing' }
-  if (typeof raw !== 'object' || raw === null) {
-    return { ok: false, msg: "must be an object with period_days + rules" }
+  if (target === 'Qu') {
+    return { target, period_days: 0.25, rules: [{ when: 't', op: '<', value: 1, set: 20 }] }
   }
-  const c = raw as Record<string, unknown>
-  const p = c.period_days
-  if (!isFiniteNum(p) || p <= 0) {
-    return { ok: false, msg: 'period_days must be a positive number of days' }
+  if (target === 'Q') {
+    // A feed switched on pH, with hysteresis: on below the lower value, off above the
+    // upper, unchanged in between.
+    return { target, period_days: 2 / 1440, otherwise: 'hold', rules: [
+      { at, when: 'pH', op: '<', value: 6.2, set: 1 },
+      { at, when: 'pH', op: '>', value: 6.25, set: 0 },
+    ] }
   }
-  const rulesRaw = c.rules
-  if (!Array.isArray(rulesRaw) || rulesRaw.length === 0) {
-    return { ok: false, msg: 'rules must be a non-empty list' }
-  }
-  const rules: CtrlRule[] = []
-  for (let i = 0; i < rulesRaw.length; i++) {
-    const r = rulesRaw[i] as Record<string, unknown>
-    if (typeof r !== 'object' || r === null) return { ok: false, msg: `rule ${i+1} must be an object` }
-    const w = r.when
-    if (w !== 't' && !isWhenState(w)) return { ok: false, msg: `rule ${i+1}: when must be a state or t` }
-    if (!isOp(r.op)) return { ok: false, msg: `rule ${i+1}: op must be <, <=, > or >=` }
-    if (!isFiniteNum(r.value)) return { ok: false, msg: `rule ${i+1}: value must be a number` }
-    if (!isFiniteNum(r.set) || r.set < 0) return { ok: false, msg: `rule ${i+1}: kLa (set) must be ≥ 0` }
-    rules.push({ when: w as CtrlWhen, op: r.op as CtrlOp, value: r.value, set: r.set })
-  }
-  return { ok: true, controller: { period_days: p, rules } }
-}
-
-/** True when a node is an aerated unit (i.e. its kLa is what the controller would steer). */
-export function isAeratedUnit(unitId: string): boolean {
-  return unitId === 'aerated_CSTR' || unitId === 'aerated_CSTR_off' ||
-         unitId === 'MBR' || unitId === 'MBBR' || unitId === 'MABR'
-}
-
-/** True when the node has a valid controller (so the UI can show it). */
-export function nodeHasController(node: { data: { unitId: string; controller?: unknown } }): boolean {
-  if (!isAeratedUnit(node.data.unitId)) return false
-  const v = parseController(node.data.controller)
-  return v.ok
+  // A sludge pump: waste (or return) more when the solids climb, less when they fall.
+  return { target, period_days: 0.25, rules: [
+    { at, when: 'MLSS', op: '>', value: 4000, set: target === 'Q_was' ? 100 : 3000 },
+    { at, when: 'MLSS', op: '<', value: 3000, set: target === 'Q_was' ? 20 : 1500 },
+  ] }
 }
